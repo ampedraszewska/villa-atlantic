@@ -1197,16 +1197,6 @@
   });
 })();
 
-// ─── HERO VIDEO — nudge play when ready (iOS quirk) ───
-(function() {
-  const vid = document.querySelector('.hero-video');
-  if (!vid) return;
-  const tryPlay = () => { const p = vid.play(); if (p && p.catch) p.catch(()=>{}); };
-  vid.addEventListener('loadedmetadata', tryPlay);
-  vid.addEventListener('canplay', tryPlay);
-  tryPlay();
-})();
-
 // ─── APARTMENT TABS ────────────────────────────────
 document.querySelectorAll('.apt-tab').forEach(tab => {
   tab.addEventListener('click', () => {
