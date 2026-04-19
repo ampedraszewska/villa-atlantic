@@ -1218,8 +1218,11 @@ document.querySelectorAll('.apt-tab').forEach(tab => {
 
 // ─── CALENDAR ──────────────────────────────────────
 // Google Calendar iCal feeds — replace with real public .ics URLs
-const ICAL_CLIFFS  = 'https://calendar.google.com/calendar/ical/b2a835e6bed7c0910197c6510d83e2183cd6a0ef16dc04db27d6126d82f53f8b%40group.calendar.google.com/public/basic.ics';
-const ICAL_GARDENS = 'https://calendar.google.com/calendar/ical/38db9cfe40fa5b786c8dda63f375310c28e3a776d2b47db18d12b90c94131042%40group.calendar.google.com/public/basic.ics';
+// iCal feeds are mirrored from Google Calendar by .github/workflows/sync-ical.yml
+// (hourly cron) to this repo, so the browser fetches them same-origin and avoids
+// the missing CORS headers on calendar.google.com.
+const ICAL_CLIFFS  = 'ical/cliffs.ics';
+const ICAL_GARDENS = 'ical/gardens.ics';
 
 const pricing = {
   cliffs:  { low: 150, high: 160 },

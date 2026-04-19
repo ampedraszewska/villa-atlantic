@@ -1,0 +1,36 @@
+name: Sync iCal feeds
+
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch iCal feeds
+        run: |
+          mkdir -p ical
+          curl -fsS "https://calendar.google.com/calendar/ical/b2a835e6bed7c0910197c6510d83e2183cd6a0ef16dc04db27d6126d82f53f8b%40group.calendar.google.com/public/basic.ics" -o ical/cliffs.ics
+          curl -fsS "https://calendar.google.com/calendar/ical/38db9cfe40fa5b786c8dda63f375310c28e3a776d2b47db18d12b90c94131042%40group.calendar.google.com/public/basic.ics" -o ical/gardens.ics
+          # Strip the DTSTAMP line which changes on every fetch, so commits only
+          # happen when actual event data changes.
+          sed -i '/^DTSTAMP:/d' ical/cliffs.ics ical/gardens.ics
+
+      - name: Commit if changed
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- ical/; then
+            echo "No ICS changes."
+            exit 0
+          fi
+          git add ical/
+          git commit -m "chore: sync iCal feeds [skip ci]"
+          git push
