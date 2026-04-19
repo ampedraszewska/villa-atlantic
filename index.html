@@ -1101,6 +1101,12 @@
       </div>
 
       <form class="inquiry-form" action="https://formsubmit.co/pgrzegorczyk6@gmail.com" method="POST">
+        <!-- Formsubmit config: subject line + redirect back to our own page.
+             _next is set at submit time by JS so it tracks whatever domain we're
+             currently served from (no hardcoded URL to update on domain switch). -->
+        <input type="hidden" name="_subject" value="Villa Atlantic — nowe zapytanie">
+        <input type="hidden" name="_next" id="form-next" value="">
+        <input type="hidden" name="_template" value="table">
         <label data-lang="en">Your name</label><label data-lang="pl">Imię i nazwisko</label>
         <input type="text" name="name" required>
 
@@ -1335,6 +1341,30 @@ function setupCalendarLazyLoad() {
   }
 }
 document.addEventListener('DOMContentLoaded', setupCalendarLazyLoad);
+
+// ─── INQUIRY FORM: dynamic _next + post-submit thank-you ──────────────────
+(function() {
+  const form = document.querySelector('.inquiry-form');
+  const nextInput = document.getElementById('form-next');
+  if (form && nextInput) {
+    form.addEventListener('submit', () => {
+      nextInput.value = window.location.origin + window.location.pathname + '?sent=1#contact';
+    });
+  }
+  // When we land back here after a successful submit, show a confirmation toast.
+  if (new URLSearchParams(window.location.search).get('sent') === '1') {
+    const toast = document.createElement('div');
+    toast.setAttribute('role', 'status');
+    toast.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#15603a;color:#fff;padding:14px 22px;border-radius:10px;font-family:inherit;font-size:0.95rem;z-index:9999;box-shadow:0 10px 30px rgba(0,0,0,.25);max-width:92vw;text-align:center;';
+    const isPL = document.documentElement.classList.contains('lang-pl');
+    toast.textContent = isPL
+      ? 'Dziękujemy — Twoje zapytanie dotarło. Odpowiemy w ciągu 24h.'
+      : 'Thank you — your inquiry was sent. We will reply within 24 hours.';
+    document.body.appendChild(toast);
+    setTimeout(() => { toast.style.transition = 'opacity .6s'; toast.style.opacity = '0'; }, 6000);
+    setTimeout(() => toast.remove(), 6800);
+  }
+})();
 
 // ─── LIGHTBOX ──────────────────────────────────────
 (function() {
