@@ -559,9 +559,8 @@
 
 <!-- HERO -->
 <header class="hero" id="top">
-  <video class="hero-video" autoplay muted loop playsinline preload="auto" poster="images/hero-poster.jpg" webkit-playsinline>
-    <source src="videos/hero-mobile.mp4" type="video/mp4" media="(max-width: 767px)">
-    <source src="videos/hero.mp4" type="video/mp4">
+  <video class="hero-video" autoplay muted loop playsinline webkit-playsinline poster="images/hero-poster.jpg">
+    <source src="videos/hero-mobile.mp4" type="video/mp4">
   </video>
   <div class="hero-content">
     <div class="hero-tag" data-lang="en">Puerto de Santiago · Tenerife</div>
@@ -1190,24 +1189,6 @@
 
   document.querySelectorAll('.lang-switch button').forEach(btn => {
     btn.addEventListener('click', () => setLang(btn.dataset.setLang));
-  });
-})();
-
-// ─── HERO VIDEO AUTOPLAY (iOS Safari + Chrome workaround) ───
-(function() {
-  const vid = document.querySelector('.hero-video');
-  if (!vid) return;
-  const tryPlay = () => {
-    const p = vid.play();
-    if (p && typeof p.catch === 'function') p.catch(() => {});
-  };
-  tryPlay();
-  vid.addEventListener('loadedmetadata', tryPlay);
-  vid.addEventListener('canplay', tryPlay);
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) tryPlay(); });
-  // Retry once on first user interaction (iOS sometimes needs this)
-  ['touchstart', 'click', 'scroll'].forEach(ev => {
-    document.addEventListener(ev, tryPlay, { once: true, passive: true });
   });
 })();
 
