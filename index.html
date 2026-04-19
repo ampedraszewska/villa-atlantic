@@ -3,18 +3,20 @@
 <head>
 <script>
   // Run synchronously in <head> to set language class before first paint (no flash of wrong lang).
+  // To add Spanish: add 'es' to SUPPORTED, add a matching data-lang="es" CSS rule, and add a button.
   (function() {
+    var SUPPORTED = ['en', 'pl'];
+    var DEFAULT_LANG = 'en';
     var stored = null;
     try { stored = localStorage.getItem('villa-atlantic-lang'); } catch (e) {}
-    var lang = stored;
-    if (!lang) {
-      try {
-        var tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-        if (tz === 'Europe/Warsaw') lang = 'pl';
-      } catch (e) {}
-      if (!lang) lang = (navigator.language || 'en').indexOf('pl') === 0 ? 'pl' : 'en';
+    var lang;
+    if (stored && SUPPORTED.indexOf(stored) !== -1) {
+      lang = stored;
+    } else {
+      var browser = (navigator.language || '').slice(0, 2).toLowerCase();
+      lang = SUPPORTED.indexOf(browser) !== -1 ? browser : DEFAULT_LANG;
     }
-    document.documentElement.classList.remove('lang-en', 'lang-pl');
+    SUPPORTED.forEach(function(l) { document.documentElement.classList.remove('lang-' + l); });
     document.documentElement.classList.add('lang-' + lang);
     document.documentElement.lang = lang;
   })();
@@ -76,8 +78,10 @@
   h2 { font-size: clamp(1.8rem, 3.2vw, 2.6rem); line-height: 1.15; margin-bottom: 1rem; }
   h3 { font-size: 1.4rem; line-height: 1.25; margin-bottom: 0.5rem; }
 
-  html.lang-en [data-lang="pl"],
-  html.lang-pl [data-lang="en"] { display: none !important; }
+  /* Hide content whose language doesn't match the current <html> class.
+     To add Spanish: add `html:not(.lang-es) [data-lang="es"]` to this list. */
+  html:not(.lang-en) [data-lang="en"],
+  html:not(.lang-pl) [data-lang="pl"] { display: none !important; }
 
   /* NAV */
   .nav {
@@ -160,6 +164,23 @@
     padding: 6px 14px; border-radius: 999px;
     margin-bottom: 24px;
   }
+  .hero-badge {
+    position: absolute;
+    top: 28px; right: 28px; z-index: 3;
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 10px 18px; border-radius: 8px;
+    background: var(--coral);
+    color: white; font-size: 0.92rem; font-weight: 700;
+    letter-spacing: 0.04em; text-transform: uppercase;
+    border: 2px solid rgba(255,255,255,0.92);
+    box-shadow: 0 8px 22px rgba(0,0,0,0.28);
+    transform: rotate(-6deg);
+    transition: transform 0.18s, box-shadow 0.18s;
+  }
+  .hero-badge:hover { color: white; transform: rotate(-6deg) translateY(-2px) scale(1.03); box-shadow: 0 10px 28px rgba(0,0,0,0.32); }
+  @media (max-width: 767px) {
+    .hero-badge { top: 14px; right: 14px; font-size: 0.72rem; padding: 7px 12px; gap: 6px; }
+  }
   .hero h1 { color: white; margin-bottom: 1rem; }
   .hero p.hero-sub {
     font-size: 1.15rem; opacity: 0.95; max-width: 640px; margin: 0 auto 2rem;
@@ -230,6 +251,56 @@
   .about-text p strong { color: var(--text); font-weight: 600; }
   .about-img { border-radius: var(--radius); overflow: hidden; box-shadow: 0 16px 40px rgba(10,77,104,0.18); }
   .about-img img { aspect-ratio: 4/5; object-fit: cover; }
+
+  /* REMOTE WORK */
+  .remote-work {
+    background: linear-gradient(180deg, var(--bg) 0%, var(--bg-raised) 100%);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding: 52px 24px;
+  }
+  .remote-work h2 { font-size: clamp(1.5rem, 2.4vw, 2rem); }
+  .remote-work-grid {
+    display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 36px; align-items: center;
+    margin-top: 1.25rem;
+  }
+  @media (max-width: 900px) { .remote-work-grid { grid-template-columns: 1fr; gap: 24px; } }
+  .remote-work-lead { color: var(--text-muted); font-size: 0.98rem; margin-bottom: 1rem; max-width: 560px; }
+  .remote-work-lead strong { color: var(--text); font-weight: 600; }
+  .remote-work-features { list-style: none; }
+  .remote-work-features li {
+    display: flex; gap: 12px; align-items: flex-start;
+    padding: 10px 0; border-bottom: 1px solid var(--border);
+  }
+  .remote-work-features li:last-child { border-bottom: none; }
+  .rw-icon {
+    flex: 0 0 auto; width: 32px; height: 32px; border-radius: 8px;
+    background: var(--ocean); color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1rem;
+  }
+  .rw-body { flex: 1; }
+  .rw-title { font-weight: 600; color: var(--text); margin-bottom: 2px; font-size: 0.96rem; }
+  .rw-desc { color: var(--text-muted); font-size: 0.88rem; line-height: 1.45; }
+  .remote-work-media {
+    border-radius: var(--radius); overflow: hidden;
+    box-shadow: 0 12px 32px rgba(10,77,104,0.16);
+    background: var(--bg-warm);
+    border: 1px solid var(--border);
+    max-width: 340px; margin: 0 auto;
+  }
+  .remote-work-media img {
+    width: 100%; height: auto; display: block;
+  }
+  .remote-work-media-caption {
+    padding: 10px 14px; font-size: 0.78rem; line-height: 1.4;
+    color: var(--text-muted); background: white;
+    border-top: 1px solid var(--border);
+  }
+  .remote-work-media-placeholder {
+    aspect-ratio: 4/3; display: flex; align-items: center; justify-content: center;
+    color: var(--text-dim); font-size: 0.9rem; padding: 20px; text-align: center;
+  }
 
   /* AMENITIES grid */
   .amenities {
@@ -567,6 +638,8 @@
   <video class="hero-video" autoplay muted loop playsinline webkit-playsinline poster="images/hero-poster.jpg">
     <source src="videos/hero-mobile.mp4" type="video/mp4">
   </video>
+  <a href="#remote-work" class="hero-badge" data-lang="en">🌐 1 Gb/s · Remote-work ready</a>
+  <a href="#remote-work" class="hero-badge" data-lang="pl">🌐 1 Gb/s · Praca zdalna</a>
   <div class="hero-content">
     <div class="hero-tag" data-lang="en">Puerto de Santiago · Tenerife</div>
     <div class="hero-tag" data-lang="pl">Puerto de Santiago · Teneryfa</div>
@@ -822,6 +895,67 @@
   </div>
 </section>
 
+<!-- REMOTE WORK -->
+<section class="remote-work" id="remote-work">
+  <div class="container">
+    <div class="section-eyebrow" data-lang="en">Work from paradise</div>
+    <div class="section-eyebrow" data-lang="pl">Praca w raju</div>
+    <h2 data-lang="en">Remote-work ready — built for nomads</h2>
+    <h2 data-lang="pl">Gotowe do pracy zdalnej — dla nomadów</h2>
+
+    <div class="remote-work-grid">
+      <div>
+        <p class="remote-work-lead" data-lang="en">Fast, quiet, and ready for work — without giving up the ocean view.</p>
+        <p class="remote-work-lead" data-lang="pl">Szybko, cicho, gotowe do pracy — bez rezygnacji z widoku na ocean.</p>
+
+        <ul class="remote-work-features">
+          <li>
+            <div class="rw-icon">📶</div>
+            <div class="rw-body">
+              <div class="rw-title" data-lang="en">1 Gb/s fiber</div>
+              <div class="rw-title" data-lang="pl">Światłowód 1 Gb/s</div>
+              <div class="rw-desc" data-lang="en">Wired in the living room. Plenty for video calls and big uploads.</div>
+              <div class="rw-desc" data-lang="pl">Po kablu w salonie. Wystarczy na rozmowy wideo i duże uploady.</div>
+            </div>
+          </li>
+          <li>
+            <div class="rw-icon">🌊</div>
+            <div class="rw-body">
+              <div class="rw-title" data-lang="en">Quiet oceanfront</div>
+              <div class="rw-title" data-lang="pl">Cicho, nad oceanem</div>
+              <div class="rw-desc" data-lang="en">Just the sound of waves. Clean audio on calls.</div>
+              <div class="rw-desc" data-lang="pl">Tylko szum fal. Czysty dźwięk na rozmowach.</div>
+            </div>
+          </li>
+          <li>
+            <div class="rw-icon">💼</div>
+            <div class="rw-body">
+              <div class="rw-title" data-lang="en">Coworking 10 min away</div>
+              <div class="rw-title" data-lang="pl">Coworking 10 min spacerem</div>
+              <div class="rw-desc" data-lang="en">Professional space in Los Gigantes, a short walk from the villa.</div>
+              <div class="rw-desc" data-lang="pl">Profesjonalne biuro w Los Gigantes, krótki spacer od willi.</div>
+            </div>
+          </li>
+        </ul>
+      </div>
+      <div class="remote-work-media">
+        <img loading="lazy" decoding="async" src="images/speedtest.jpg" alt="Villa Atlantic internet speed test — Movistar WiFi 6, ~800 Mbps down / 450 Mbps up" onerror="this.style.display='none'; this.nextElementSibling.nextElementSibling.style.display='flex';">
+        <div class="remote-work-media-caption">
+          <span data-lang="en">WiFi test from the bedroom. Living room has wired 1 Gb/s.</span>
+          <span data-lang="pl">Test po WiFi z sypialni. W salonie 1 Gb/s po kablu.</span>
+        </div>
+        <div class="remote-work-media-placeholder" style="display:none;">
+          <div>
+            <div style="font-size: 2rem; margin-bottom: 8px;">📶</div>
+            <div data-lang="en">Speedtest screenshot coming soon</div>
+            <div data-lang="pl">Zrzut ekranu ze speedtestu wkrótce</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- LOCATION -->
 <section id="location" style="background: var(--bg-raised);">
   <div class="container">
@@ -1027,22 +1161,22 @@
       <div class="review">
         <p class="review-text" data-lang="en">Together with my partner we spent 4 weeks at Villa Atlantic in February, after escaping the Polish winter. Fast internet, breathtaking views and perfect weather.</p>
         <p class="review-text" data-lang="pl">Razem z partnerem spędziliśmy w Villa Atlantic 4 tygodnie w lutym, uciekając od polskiej zimy. Szybki internet, zapierające dech widoki i idealna pogoda.</p>
-        <div class="review-author">Aleksandra <span class="review-meta">· 32 · Warszawa</span></div>
+        <div class="review-author">Aleksandra <span class="review-meta">· 32 · Warsaw, Poland</span></div>
       </div>
       <div class="review">
         <p class="review-text" data-lang="en">We visited Villa Atlantic as a newly married couple with our mothers, looking for a peaceful location with access to all amenities. It was a perfect place for a family vacation in April.</p>
         <p class="review-text" data-lang="pl">Przyjechaliśmy do Villa Atlantic jako świeżo poślubione małżeństwo razem z naszymi mamami, szukając spokojnego miejsca z dostępem do wszystkich udogodnień. Idealne miejsce na rodzinne wakacje w kwietniu.</p>
-        <div class="review-author">Łukasz <span class="review-meta">· 36 · Kraków</span></div>
+        <div class="review-author">Thomas <span class="review-meta">· 36 · Amsterdam, Netherlands</span></div>
       </div>
       <div class="review">
         <p class="review-text" data-lang="en">We came with two kids (5 and 8) in July. The pool and direct garden access from the lower apartment made it the easiest family holiday we've ever had — the kids stayed in the water all day and we barely needed to leave the property.</p>
         <p class="review-text" data-lang="pl">Przyjechaliśmy z dwójką dzieci (5 i 8 lat) w lipcu. Basen i bezpośrednie wyjście do ogrodu z dolnego apartamentu sprawiły, że to były najprostsze wakacje rodzinne, jakie mieliśmy — dzieci cały dzień w wodzie, a my prawie nie musieliśmy ruszać się z domu.</p>
-        <div class="review-author">Magdalena <span class="review-meta">· 38 · Poznań</span></div>
+        <div class="review-author">Sophie <span class="review-meta">· 38 · Lyon, France</span></div>
       </div>
       <div class="review">
         <p class="review-text" data-lang="en">My wife and I are both retired and spent six weeks at Villa Atlantic in November. Warm, quiet, walking distance to everything, and the cliffs view at sunset is something we still talk about. A perfect long stay.</p>
         <p class="review-text" data-lang="pl">Razem z żoną jesteśmy na emeryturze i spędziliśmy w Villa Atlantic sześć tygodni w listopadzie. Ciepło, spokojnie, wszędzie blisko pieszo, a widok na klify o zachodzie słońca to coś, o czym wciąż rozmawiamy. Idealny długi pobyt.</p>
-        <div class="review-author">Andrzej <span class="review-meta">· 68 · Wrocław</span></div>
+        <div class="review-author">James <span class="review-meta">· 68 · Edinburgh, UK</span></div>
       </div>
     </div>
   </div>
@@ -1172,20 +1306,24 @@
 
 <script>
 // ─── LANGUAGE ──────────────────────────────────────
+// Keep SUPPORTED in sync with the head script. To add Spanish:
+//   1) add 'es' below, 2) add a data-lang="es" CSS rule, 3) add a button in .lang-switch,
+//   4) add data-lang="es" content alongside existing en/pl strings.
 (function() {
+  const SUPPORTED = ['en', 'pl'];
+  const DEFAULT_LANG = 'en';
   const stored = localStorage.getItem('villa-atlantic-lang');
-  let lang = stored;
-  if (!lang) {
-    try {
-      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      if (tz === 'Europe/Warsaw') lang = 'pl';
-    } catch (e) {}
-    if (!lang) lang = (navigator.language || 'en').startsWith('pl') ? 'pl' : 'en';
+  let lang;
+  if (stored && SUPPORTED.includes(stored)) {
+    lang = stored;
+  } else {
+    const browser = (navigator.language || '').slice(0, 2).toLowerCase();
+    lang = SUPPORTED.includes(browser) ? browser : DEFAULT_LANG;
   }
   setLang(lang);
 
   function setLang(l) {
-    document.documentElement.classList.remove('lang-en', 'lang-pl');
+    SUPPORTED.forEach(x => document.documentElement.classList.remove('lang-' + x));
     document.documentElement.classList.add('lang-' + l);
     document.documentElement.lang = l;
     localStorage.setItem('villa-atlantic-lang', l);
@@ -1267,6 +1405,26 @@ async function loadFullCalendar() {
   await loadScript('https://cdn.jsdelivr.net/npm/@fullcalendar/icalendar@6.1.15/index.global.min.js');
 }
 
+function renderPriceOnCell(cellEl, date) {
+  const old = cellEl.querySelector('.price-overlay');
+  if (old) old.remove();
+  const price = pricing[currentView][seasonFor(date)];
+  const priceEl = document.createElement('div');
+  priceEl.className = 'price-overlay';
+  priceEl.textContent = '€' + price;
+  priceEl.style.cssText = 'position:absolute;bottom:4px;right:6px;font-size:10px;color:var(--text-dim);pointer-events:none;';
+  cellEl.style.position = 'relative';
+  cellEl.appendChild(priceEl);
+}
+
+function refreshAllPrices() {
+  document.querySelectorAll('#calendar .fc-daygrid-day[data-date]').forEach(cell => {
+    const dateStr = cell.getAttribute('data-date');
+    if (!dateStr) return;
+    renderPriceOnCell(cell, new Date(dateStr + 'T00:00:00'));
+  });
+}
+
 function initCalendar() {
   const el = document.getElementById('calendar');
   calendar = new FullCalendar.Calendar(el, {
@@ -1275,14 +1433,7 @@ function initCalendar() {
     firstDay: 1,
     headerToolbar: { left: 'prev,next today', center: 'title', right: '' },
     eventSources: buildSources(currentView),
-    dayCellDidMount: function(info) {
-      const price = pricing[currentView][seasonFor(info.date)];
-      const priceEl = document.createElement('div');
-      priceEl.textContent = '€' + price;
-      priceEl.style.cssText = 'position:absolute;bottom:4px;right:6px;font-size:10px;color:var(--text-dim);pointer-events:none;';
-      info.el.style.position = 'relative';
-      info.el.appendChild(priceEl);
-    },
+    dayCellDidMount: function(info) { renderPriceOnCell(info.el, info.date); },
     eventDidMount: function(info) {
       info.el.style.backgroundColor = 'rgba(232,102,77,0.75)';
       info.el.style.borderColor = 'rgba(232,102,77,0.9)';
@@ -1315,6 +1466,7 @@ document.querySelectorAll('.cal-tab').forEach(tab => {
     calendar.getEventSources().forEach(s => s.remove());
     buildSources(v).forEach(s => calendar.addEventSource(s));
     calendar.render();
+    refreshAllPrices();
   });
 });
 
