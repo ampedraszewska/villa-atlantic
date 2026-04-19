@@ -36,11 +36,9 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.css">
-<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@fullcalendar/icalendar@6.1.15/index.global.min.js"></script>
+<!-- FullCalendar lazy-loaded via IntersectionObserver when user scrolls near #calendar-section -->
 
 <style>
   :root {
@@ -561,7 +559,8 @@
 
 <!-- HERO -->
 <header class="hero" id="top">
-  <video class="hero-video" autoplay muted loop playsinline poster="images/hero-poster.jpg">
+  <video class="hero-video" autoplay muted loop playsinline preload="metadata" poster="images/hero-poster.jpg">
+    <source src="videos/hero-mobile.mp4" type="video/mp4" media="(max-width: 767px)">
     <source src="videos/hero.mp4" type="video/mp4">
   </video>
   <div class="hero-content">
@@ -592,7 +591,7 @@
 
     <div class="options-grid">
       <div class="option-card">
-        <img src="images/house/outside/Pool1.avif" alt="Villa Atlantic whole villa with pool">
+        <img loading="lazy" decoding="async" src="images/house/outside/Pool1.avif" alt="Villa Atlantic whole villa with pool">
         <div class="option-body">
           <h3><span data-lang="en">Whole Villa Atlantic</span><span data-lang="pl">Cała Villa Atlantic</span></h3>
           <div class="option-meta" data-lang="en">Up to 11 guests · Full exclusivity</div>
@@ -617,7 +616,7 @@
       </div>
 
       <div class="option-card">
-        <img src="images/house/upstairs/Taras1.JPG" alt="Villa Atlantic Cliffs — upper apartment terrace">
+        <img loading="lazy" decoding="async" src="images/house/upstairs/Taras1.JPG" alt="Villa Atlantic Cliffs — upper apartment terrace">
         <div class="option-body">
           <h3>Villa Atlantic Cliffs</h3>
           <div class="option-meta" data-lang="en">Upper · up to 5 guests · ocean views</div>
@@ -642,7 +641,7 @@
       </div>
 
       <div class="option-card">
-        <img src="images/house/downstairs/cb3f5941-008f-4a5f-8418-ad0a0f3929e1.JPG" alt="Villa Atlantic Gardens — lower apartment">
+        <img loading="lazy" decoding="async" src="images/house/downstairs/cb3f5941-008f-4a5f-8418-ad0a0f3929e1.JPG" alt="Villa Atlantic Gardens — lower apartment">
         <div class="option-body">
           <h3>Villa Atlantic Gardens</h3>
           <div class="option-meta" data-lang="en">Lower · up to 6 guests · private garden</div>
@@ -691,7 +690,7 @@
         </div>
       </div>
       <div class="about-img">
-        <img src="images/house/outside/Cliffs.JPG" alt="Villa Atlantic with ocean and cliffs view">
+        <img loading="lazy" decoding="async" src="images/house/outside/Cliffs.JPG" alt="Villa Atlantic with ocean and cliffs view">
       </div>
     </div>
   </div>
@@ -757,22 +756,22 @@
           </div>
         </div>
         <div class="about-img">
-          <img src="images/house/upstairs/Taras1.JPG" alt="Villa Atlantic Cliffs panoramic terrace">
+          <img loading="lazy" decoding="async" src="images/house/upstairs/Taras1.JPG" alt="Villa Atlantic Cliffs panoramic terrace">
         </div>
       </div>
       <div class="photo-grid" data-gallery="cliffs">
-        <div class="tile"><img src="images/house/upstairs/Living.JPG" alt="Cliffs — living room"></div>
-        <div class="tile"><img src="images/house/upstairs/Living2.JPG" alt="Cliffs — living area"></div>
-        <div class="tile"><img src="images/house/upstairs/Kitchen2.JPG" alt="Cliffs — kitchen"></div>
-        <div class="tile"><img src="images/house/upstairs/Kitchen3.JPG" alt="Cliffs — kitchen dining"></div>
-        <div class="tile"><img src="images/house/upstairs/Bedroom1.JPG" alt="Cliffs — bedroom 1"></div>
-        <div class="tile"><img src="images/house/upstairs/Bedroom2.JPG" alt="Cliffs — bedroom 2"></div>
-        <div class="tile"><img src="images/house/upstairs/Bedroom3.JPG" alt="Cliffs — bedroom 3"></div>
-        <div class="tile"><img src="images/house/upstairs/Bathroom.JPG" alt="Cliffs — bathroom"></div>
-        <div class="tile"><img src="images/house/upstairs/Taras1.JPG" alt="Cliffs — terrace"></div>
-        <div class="tile"><img src="images/house/upstairs/Taras3.JPG" alt="Cliffs — terrace sunset"></div>
-        <div class="tile"><img src="images/house/upstairs/Taras6.JPG" alt="Cliffs — terrace ocean"></div>
-        <div class="tile"><img src="images/house/upstairs/Taras7.JPG" alt="Cliffs — terrace panorama"></div>
+        <div class="tile"><img loading="lazy" decoding="async" src="images/house/upstairs/Living.JPG" alt="Cliffs — living room"></div>
+        <div class="tile"><img loading="lazy" decoding="async" src="images/house/upstairs/Living2.JPG" alt="Cliffs — living area"></div>
+        <div class="tile"><img loading="lazy" decoding="async" src="images/house/upstairs/Kitchen2.JPG" alt="Cliffs — kitchen"></div>
+        <div class="tile"><img loading="lazy" decoding="async" src="images/house/upstairs/Kitchen3.JPG" alt="Cliffs — kitchen dining"></div>
+        <div class="tile"><img loading="lazy" decoding="async" src="images/house/upstairs/Bedroom1.JPG" alt="Cliffs — bedroom 1"></div>
+        <div class="tile"><img loading="lazy" decoding="async" src="images/house/upstairs/Bedroom2.JPG" alt="Cliffs — bedroom 2"></div>
+        <div class="tile"><img loading="lazy" decoding="async" src="images/house/upstairs/Bedroom3.JPG" alt="Cliffs — bedroom 3"></div>
+        <div class="tile"><img loading="lazy" decoding="async" src="images/house/upstairs/Bathroom.JPG" alt="Cliffs — bathroom"></div>
+        <div class="tile"><img loading="lazy" decoding="async" src="images/house/upstairs/Taras1.JPG" alt="Cliffs — terrace"></div>
+        <div class="tile"><img loading="lazy" decoding="async" src="images/house/upstairs/Taras3.JPG" alt="Cliffs — terrace sunset"></div>
+        <div class="tile"><img loading="lazy" decoding="async" src="images/house/upstairs/Taras6.JPG" alt="Cliffs — terrace ocean"></div>
+        <div class="tile"><img loading="lazy" decoding="async" src="images/house/upstairs/Taras7.JPG" alt="Cliffs — terrace panorama"></div>
       </div>
     </div>
 
@@ -802,18 +801,18 @@
           </div>
         </div>
         <div class="about-img">
-          <img src="images/house/downstairs/cb3f5941-008f-4a5f-8418-ad0a0f3929e1.JPG" alt="Villa Atlantic Gardens — garden entrance with ocean view">
+          <img loading="lazy" decoding="async" src="images/house/downstairs/cb3f5941-008f-4a5f-8418-ad0a0f3929e1.JPG" alt="Villa Atlantic Gardens — garden entrance with ocean view">
         </div>
       </div>
       <div class="photo-grid" data-gallery="gardens">
-        <div class="tile"><img src="images/house/downstairs/ae6e4fee-144b-4e96-9a2e-b7b05b1db079.JPG" alt="Gardens — living"></div>
-        <div class="tile"><img src="images/house/downstairs/847bc40e-107f-4ef8-847e-5cce4f32c167.JPG" alt="Gardens — interior"></div>
-        <div class="tile"><img src="images/house/downstairs/9fd88240-6c4d-491f-9412-35c3b8d43ae4.JPG" alt="Gardens — interior"></div>
-        <div class="tile"><img src="images/house/downstairs/a1cebeaa-3daa-468e-b9ad-da9f43257b97.JPG" alt="Gardens — interior"></div>
-        <div class="tile"><img src="images/house/downstairs/ab220279-ae85-41ec-87f2-f38d112f9e7c.JPG" alt="Gardens — interior"></div>
-        <div class="tile"><img src="images/house/downstairs/c2e6e79e-1586-4b36-bebe-fa78a771bb17.JPG" alt="Gardens — interior"></div>
-        <div class="tile"><img src="images/house/downstairs/cb3f5941-008f-4a5f-8418-ad0a0f3929e1.JPG" alt="Gardens — interior"></div>
-        <div class="tile"><img src="images/house/downstairs/d3ec5d9e-6973-4dd5-8e22-993163c5173b.JPG" alt="Gardens — interior"></div>
+        <div class="tile"><img loading="lazy" decoding="async" src="images/house/downstairs/ae6e4fee-144b-4e96-9a2e-b7b05b1db079.JPG" alt="Gardens — living"></div>
+        <div class="tile"><img loading="lazy" decoding="async" src="images/house/downstairs/847bc40e-107f-4ef8-847e-5cce4f32c167.JPG" alt="Gardens — interior"></div>
+        <div class="tile"><img loading="lazy" decoding="async" src="images/house/downstairs/9fd88240-6c4d-491f-9412-35c3b8d43ae4.JPG" alt="Gardens — interior"></div>
+        <div class="tile"><img loading="lazy" decoding="async" src="images/house/downstairs/a1cebeaa-3daa-468e-b9ad-da9f43257b97.JPG" alt="Gardens — interior"></div>
+        <div class="tile"><img loading="lazy" decoding="async" src="images/house/downstairs/ab220279-ae85-41ec-87f2-f38d112f9e7c.JPG" alt="Gardens — interior"></div>
+        <div class="tile"><img loading="lazy" decoding="async" src="images/house/downstairs/c2e6e79e-1586-4b36-bebe-fa78a771bb17.JPG" alt="Gardens — interior"></div>
+        <div class="tile"><img loading="lazy" decoding="async" src="images/house/downstairs/cb3f5941-008f-4a5f-8418-ad0a0f3929e1.JPG" alt="Gardens — interior"></div>
+        <div class="tile"><img loading="lazy" decoding="async" src="images/house/downstairs/d3ec5d9e-6973-4dd5-8e22-993163c5173b.JPG" alt="Gardens — interior"></div>
       </div>
     </div>
   </div>
@@ -830,7 +829,7 @@
     <div class="location-grid" style="margin-top: 2rem;">
       <div>
         <a href="https://maps.app.goo.gl/pfVPDSiAPrYtytdr7" target="_blank" rel="noopener" class="location-map">
-          <img src="images/location/Location of the house.png" alt="Map showing Villa Atlantic location in Puerto de Santiago, Tenerife">
+          <img loading="lazy" decoding="async" src="images/location/Location of the house.png" alt="Map showing Villa Atlantic location in Puerto de Santiago, Tenerife">
           <span class="location-map-cta" data-lang="en">Open in Google Maps ↗</span>
           <span class="location-map-cta" data-lang="pl">Otwórz w Google Maps ↗</span>
         </a>
@@ -872,24 +871,24 @@
     <h2 data-lang="pl">Willa, basen i okolica</h2>
 
     <div class="gallery-grid" data-gallery="all" style="margin-top: 2rem;">
-      <div class="tile"><img src="images/house/outside/Pool1.avif" alt="Pool"></div>
-      <div class="tile"><img src="images/house/outside/Pool2.avif" alt="Pool"></div>
-      <div class="tile"><img src="images/house/outside/Pool3.avif" alt="Pool"></div>
-      <div class="tile"><img src="images/house/outside/Pool4.avif" alt="Pool"></div>
-      <div class="tile"><img src="images/house/outside/Cliffs.JPG" alt="Ocean cliffs"></div>
-      <div class="tile"><img src="images/house/outside/Cliffs2.JPG" alt="Ocean cliffs"></div>
-      <div class="tile"><img src="images/surroundings/Beach.avif" alt="Nearby beach"></div>
-      <div class="tile"><img src="images/surroundings/Beach2.jpg" alt="Nearby beach"></div>
-      <div class="tile"><img src="images/surroundings/Beach3.jpg" alt="Nearby beach"></div>
-      <div class="tile"><img src="images/surroundings/Beach4.jpg" alt="Nearby beach"></div>
-      <div class="tile"><img src="images/surroundings/City.avif" alt="Puerto de Santiago"></div>
-      <div class="tile"><img src="images/surroundings/City2.webp" alt="Puerto de Santiago"></div>
-      <div class="tile"><img src="images/surroundings/City3.jpg" alt="Puerto de Santiago"></div>
-      <div class="tile"><img src="images/surroundings/Mountains.JPG" alt="Mountains"></div>
-      <div class="tile"><img src="images/surroundings/Tennis courts.jpg" alt="Tennis courts"></div>
-      <div class="tile"><img src="images/location/Location2.avif" alt="Area"></div>
-      <div class="tile"><img src="images/location/Location3.avif" alt="Area"></div>
-      <div class="tile"><img src="images/house/upstairs/Taras5.JPG" alt="Cliffs terrace"></div>
+      <div class="tile"><img loading="lazy" decoding="async" src="images/house/outside/Pool1.avif" alt="Pool"></div>
+      <div class="tile"><img loading="lazy" decoding="async" src="images/house/outside/Pool2.avif" alt="Pool"></div>
+      <div class="tile"><img loading="lazy" decoding="async" src="images/house/outside/Pool3.avif" alt="Pool"></div>
+      <div class="tile"><img loading="lazy" decoding="async" src="images/house/outside/Pool4.avif" alt="Pool"></div>
+      <div class="tile"><img loading="lazy" decoding="async" src="images/house/outside/Cliffs.JPG" alt="Ocean cliffs"></div>
+      <div class="tile"><img loading="lazy" decoding="async" src="images/house/outside/Cliffs2.JPG" alt="Ocean cliffs"></div>
+      <div class="tile"><img loading="lazy" decoding="async" src="images/surroundings/Beach.avif" alt="Nearby beach"></div>
+      <div class="tile"><img loading="lazy" decoding="async" src="images/surroundings/Beach2.jpg" alt="Nearby beach"></div>
+      <div class="tile"><img loading="lazy" decoding="async" src="images/surroundings/Beach3.jpg" alt="Nearby beach"></div>
+      <div class="tile"><img loading="lazy" decoding="async" src="images/surroundings/Beach4.jpg" alt="Nearby beach"></div>
+      <div class="tile"><img loading="lazy" decoding="async" src="images/surroundings/City.avif" alt="Puerto de Santiago"></div>
+      <div class="tile"><img loading="lazy" decoding="async" src="images/surroundings/City2.webp" alt="Puerto de Santiago"></div>
+      <div class="tile"><img loading="lazy" decoding="async" src="images/surroundings/City3.jpg" alt="Puerto de Santiago"></div>
+      <div class="tile"><img loading="lazy" decoding="async" src="images/surroundings/Mountains.JPG" alt="Mountains"></div>
+      <div class="tile"><img loading="lazy" decoding="async" src="images/surroundings/Tennis courts.jpg" alt="Tennis courts"></div>
+      <div class="tile"><img loading="lazy" decoding="async" src="images/location/Location2.avif" alt="Area"></div>
+      <div class="tile"><img loading="lazy" decoding="async" src="images/location/Location3.avif" alt="Area"></div>
+      <div class="tile"><img loading="lazy" decoding="async" src="images/house/upstairs/Taras5.JPG" alt="Cliffs terrace"></div>
     </div>
   </div>
 </section>
@@ -1157,7 +1156,7 @@
 <div class="lightbox" id="lightbox">
   <button class="lightbox-close" aria-label="Close">✕</button>
   <button class="lightbox-nav lightbox-prev" aria-label="Previous">‹</button>
-  <img src="" alt="">
+  <img loading="lazy" decoding="async" src="" alt="">
   <button class="lightbox-nav lightbox-next" aria-label="Next">›</button>
 </div>
 
@@ -1220,6 +1219,28 @@ function seasonFor(date) {
 
 let calendar;
 let currentView = 'whole';
+let fcLoaded = false;
+
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = src; s.async = true;
+    s.onload = resolve; s.onerror = reject;
+    document.head.appendChild(s);
+  });
+}
+function loadStyle(href) {
+  const l = document.createElement('link');
+  l.rel = 'stylesheet'; l.href = href;
+  document.head.appendChild(l);
+}
+async function loadFullCalendar() {
+  if (fcLoaded) return;
+  fcLoaded = true;
+  loadStyle('https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.css');
+  await loadScript('https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js');
+  await loadScript('https://cdn.jsdelivr.net/npm/@fullcalendar/icalendar@6.1.15/index.global.min.js');
+}
 
 function initCalendar() {
   const el = document.getElementById('calendar');
@@ -1265,14 +1286,36 @@ document.querySelectorAll('.cal-tab').forEach(tab => {
     const v = tab.dataset.calView;
     document.querySelectorAll('.cal-tab').forEach(t => t.classList.toggle('active', t.dataset.calView === v));
     currentView = v;
+    if (!calendar) return; // not loaded yet — view preselected, will apply on load
     calendar.getEventSources().forEach(s => s.remove());
     buildSources(v).forEach(s => calendar.addEventSource(s));
-    // Refresh price overlays
     calendar.render();
   });
 });
 
-document.addEventListener('DOMContentLoaded', initCalendar);
+// Lazy-load FullCalendar when user scrolls near the calendar section
+function setupCalendarLazyLoad() {
+  const section = document.getElementById('calendar-section');
+  if (!section) return;
+  const trigger = () => loadFullCalendar().then(initCalendar);
+
+  // If user deep-links to #calendar-section, load immediately
+  if (window.location.hash === '#calendar-section') { trigger(); return; }
+
+  if ('IntersectionObserver' in window) {
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting) {
+        observer.disconnect();
+        trigger();
+      }
+    }, { rootMargin: '300px 0px' });
+    observer.observe(section);
+  } else {
+    // Fallback: load after window load
+    window.addEventListener('load', trigger);
+  }
+}
+document.addEventListener('DOMContentLoaded', setupCalendarLazyLoad);
 
 // ─── LIGHTBOX ──────────────────────────────────────
 (function() {
