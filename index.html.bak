@@ -559,7 +559,7 @@
 
 <!-- HERO -->
 <header class="hero" id="top">
-  <video class="hero-video" autoplay muted loop playsinline preload="metadata" poster="images/hero-poster.jpg">
+  <video class="hero-video" autoplay muted loop playsinline preload="auto" poster="images/hero-poster.jpg" webkit-playsinline>
     <source src="videos/hero-mobile.mp4" type="video/mp4" media="(max-width: 767px)">
     <source src="videos/hero.mp4" type="video/mp4">
   </video>
@@ -1286,14 +1286,36 @@ document.querySelectorAll('.cal-tab').forEach(tab => {
     const v = tab.dataset.calView;
     document.querySelectorAll('.cal-tab').forEach(t => t.classList.toggle('active', t.dataset.calView === v));
     currentView = v;
+    if (!calendar) return; // not loaded yet — view preselected, will apply on load
     calendar.getEventSources().forEach(s => s.remove());
     buildSources(v).forEach(s => calendar.addEventSource(s));
-    // Refresh price overlays
     calendar.render();
   });
 });
 
-document.addEventListener('DOMContentLoaded', initCalendar);
+// Lazy-load FullCalendar when user scrolls near the calendar section
+function setupCalendarLazyLoad() {
+  const section = document.getElementById('calendar-section');
+  if (!section) return;
+  const trigger = () => loadFullCalendar().then(initCalendar);
+
+  // If user deep-links to #calendar-section, load immediately
+  if (window.location.hash === '#calendar-section') { trigger(); return; }
+
+  if ('IntersectionObserver' in window) {
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting) {
+        observer.disconnect();
+        trigger();
+      }
+    }, { rootMargin: '300px 0px' });
+    observer.observe(section);
+  } else {
+    // Fallback: load after window load
+    window.addEventListener('load', trigger);
+  }
+}
+document.addEventListener('DOMContentLoaded', setupCalendarLazyLoad);
 
 // ─── LIGHTBOX ──────────────────────────────────────
 (function() {
