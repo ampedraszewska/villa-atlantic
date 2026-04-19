@@ -1,0 +1,122 @@
+# Villa Atlantic — strona wynajmu
+
+Strona statyczna (jeden plik `index.html`) dla willi Villa Atlantic w Puerto de Santiago na Teneryfie.
+
+---
+
+## Jak edytować kalendarz dostępności (instrukcja dla mamy)
+
+Strona automatycznie pokazuje zajęte dni z dwóch Twoich kalendarzy Google:
+- **Villa Atlantic — Cliffs** (góra)
+- **Villa Atlantic — Gardens** (dół)
+
+**Nic na stronie nie edytujesz.** Wszystko robisz w aplikacji Google Calendar na telefonie albo w przeglądarce (`calendar.google.com`).
+
+### Jak dodać zajęty termin (rezerwację)
+
+1. Otwórz Google Calendar na telefonie.
+2. Upewnij się, że patrzysz na właściwy kalendarz — **Cliffs** dla góry albo **Gardens** dla dołu (w ustawieniach możesz wyłączyć widok innych kalendarzy).
+3. Kliknij "+" w prawym dolnym rogu → **Wydarzenie**.
+4. W tytule wpisz np. `REZERWACJA — 4 osoby` (treść nie ma znaczenia, liczy się tylko zakres dat).
+5. Ustaw datę rozpoczęcia (check-in) i datę zakończenia (check-out). **Ważne**: data końcowa to dzień wymeldowania — jeśli gość wyjeżdża 15 maja, wpisz 15 maja jako koniec.
+6. Włącz **"Cały dzień"**.
+7. W "Kalendarz" wybierz **Villa Atlantic — Cliffs** lub **Villa Atlantic — Gardens** (zależnie, który apartament).
+8. Zapisz.
+
+Po 1–2 minutach zajęte dni pojawią się na stronie.
+
+### Jak edytować / usunąć rezerwację
+
+W Google Calendar kliknij na wydarzenie → **Edytuj** albo **Kosz**.
+
+### Uwaga: ta sama data dla góry i dołu = cała willa zajęta
+
+Na stronie w widoku "Cała willa":
+- Jeśli **obie** (góra i dół) są zajęte tego samego dnia → dzień pokazuje się jako **zajęty**.
+- Jeśli **tylko jedna** z nich jest zajęta → dzień pokazuje się jako **częściowo zajęty** (jeden apartament wciąż wolny).
+
+### Jeśli ktoś rezerwuje całą willę
+
+Dodaj wydarzenie w **obu** kalendarzach (Cliffs + Gardens) na te same daty.
+
+---
+
+## Jak pierwszy raz skonfigurować kalendarze (robi to Aleksandra raz)
+
+1. **Utwórz 2 nowe kalendarze** w Google Calendar:
+   - Ustawienia → "Dodaj kalendarz" → "Utwórz nowy kalendarz"
+   - Nazwy: `Villa Atlantic — Cliffs` i `Villa Atlantic — Gardens`
+
+2. **Udostępnij oba publicznie (tylko odczyt zajętości)**:
+   - Otwórz ustawienia kalendarza (trzy kropki → Ustawienia)
+   - "Uprawnienia dostępu" → zaznacz "Udostępnij publicznie"
+   - Wybierz **"Zobacz tylko wolny/zajęty (ukryj szczegóły)"** — ważne, żeby nazwiska gości nie były widoczne
+
+3. **Pobierz publiczny link iCal** dla każdego kalendarza:
+   - W ustawieniach kalendarza → sekcja "Zintegruj kalendarz"
+   - Skopiuj **"Publiczny adres w formacie iCal"** (kończy się na `.ics`)
+
+4. **Wklej 2 linki do `index.html`**:
+   - Otwórz `index.html` w edytorze
+   - Znajdź linie:
+     ```js
+     const ICAL_CLIFFS  = 'CLIFFS_ICAL_URL';
+     const ICAL_GARDENS = 'GARDENS_ICAL_URL';
+     ```
+   - Zastąp `'CLIFFS_ICAL_URL'` pełnym linkiem .ics dla Cliffs, analogicznie Gardens
+   - Zapisz
+
+5. **Udostępnij kalendarze mamie**:
+   - W każdym kalendarzu → Ustawienia → "Udostępnij konkretnym osobom"
+   - Dodaj email mamy z uprawnieniami "Dokonywanie zmian w wydarzeniach"
+
+---
+
+## Jak edytować treść strony
+
+Otwórz `index.html` w edytorze tekstu (VS Code, Notepad++, TextEdit). Polski i angielski są w tym samym pliku:
+- Polski tekst: szukaj `data-lang="pl"`
+- Angielski: szukaj `data-lang="en"`
+
+Zmień tekst, zapisz, wgraj zmiany na serwer (patrz: deploy).
+
+### Co do uzupełnienia przed publikacją
+
+W `index.html` są placeholdery do wymiany:
+- `VV-XXXXX` (2 miejsca: sekcja licencji + stopka) → **numer licencji VV**
+- `hello@villaatlantic.com` → **email kontaktowy**
+- `+48 000 000 000` → **numer telefonu** (2 miejsca: w atrybucie `href="https://wa.me/..."` i w wyświetlanym tekście)
+- `YOUR_FORMSPREE_ID` (w `<form action=...>`) → **ID formularza Formspree** (załóż darmowe konto na formspree.io i skopiuj endpoint)
+- `CLIFFS_ICAL_URL` i `GARDENS_ICAL_URL` → linki do kalendarzy (patrz wyżej)
+
+---
+
+## Deploy na GitHub Pages
+
+1. Utwórz nowe publiczne repo GitHub, np. `villa-atlantic-site`.
+2. Wgraj do niego zawartość folderu `villa-atlantic/`.
+3. W repo: Settings → Pages → Source: "Deploy from a branch" → Branch: `main` / root → Save.
+4. Po ~1 minucie strona będzie pod `https://twoj-username.github.io/villa-atlantic-site/`.
+5. (Opcjonalnie) Podepnij własną domenę: Settings → Pages → Custom domain.
+
+Każda aktualizacja = commit + push do repo. Strona odświeża się automatycznie w ~1 minutę.
+
+---
+
+## Struktura plików
+
+```
+villa-atlantic/
+├── index.html              ← jedyny plik strony (HTML + CSS + JS w jednym)
+├── README.md               ← ten plik
+├── images/
+│   ├── hero-poster.jpg     ← obraz wyświetlany zanim załaduje się wideo
+│   ├── house/
+│   │   ├── outside/        ← basen, klify (Pool1-4, Cliffs, Cliffs2)
+│   │   ├── upstairs/       ← zdjęcia Cliffs: Bedroom1-3, Kitchen, Living, Taras1-7, etc.
+│   │   └── downstairs/     ← zdjęcia Gardens
+│   ├── location/           ← mapa lokalizacji
+│   └── surroundings/       ← plaża, miasto, góry, korty tenisowe
+└── videos/
+    └── hero.mp4            ← wideo hero (15s, 1.7 MB)
+```
