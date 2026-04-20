@@ -24,7 +24,7 @@ jobs:
           # so "Free" events still block on the site (parents shouldn't have to
           # remember to mark availability=Busy when creating a booking).
           python3 - <<'PY'
-          import re, pathlib
+          import re, pathlib, datetime
 
           KEEP_IN_EVENT = {'DTSTART', 'DTEND', 'UID', 'RRULE', 'EXDATE', 'RECURRENCE-ID'}
           STRIP_AT_CAL  = {'X-WR-CALDESC', 'X-WR-CALNAME'}
@@ -32,6 +32,29 @@ jobs:
           def unfold(text):
               # RFC 5545 line folding: a line starting with space/tab continues the previous one.
               return re.sub(r'\r?\n[ \t]', '', text)
+
+          # Checkout-day rule: if a booking ends Apr 29 (guest leaves that morning),
+          # Apr 29 should stay AVAILABLE — the next guest can check in that same day.
+          # The shift only applies to date-only all-day events. Timed events already
+          # encode a precise checkout moment and shifting them would corrupt duration.
+          DATE_ONLY_DTEND = re.compile(r'^(DTEND[^:]*:)(\d{8})$')
+          DATE_ONLY_FIELD = re.compile(r'^(?:DTSTART|DTEND)[^:]*:(\d{8})$')
+
+          def parse_date_only(line):
+              m = DATE_ONLY_FIELD.match(line)
+              if not m:
+                  return None
+              date_str = m.group(1)
+              return datetime.date(int(date_str[:4]), int(date_str[4:6]), int(date_str[6:8]))
+
+          def shift_dtend_back_one_day(line):
+              m = DATE_ONLY_DTEND.match(line)
+              if not m:
+                  return line
+              prefix, date_str = m.groups()
+              d = datetime.date(int(date_str[:4]), int(date_str[4:6]), int(date_str[6:8]))
+              new_d = d - datetime.timedelta(days=1)
+              return prefix + new_d.strftime('%Y%m%d')
 
           def sanitize(src):
               src = unfold(src).replace('\r\n', '\n')
@@ -41,8 +64,21 @@ jobs:
                       in_event, ev = True, []
                       continue
                   if line == 'END:VEVENT':
+                      shifted_ev = [shift_dtend_back_one_day(l) for l in ev]
+                      # Safety: if the checkout-day shift collapses an all-day event
+                      # to zero duration, skip it entirely. Under our Google Calendar
+                      # convention, a real one-night stay includes both check-in and
+                      # checkout dates and still has DTEND > DTSTART after shifting.
+                      dtstart = next((l for l in shifted_ev if l.startswith('DTSTART')), None)
+                      dtend   = next((l for l in shifted_ev if l.startswith('DTEND')), None)
+                      if dtstart and dtend:
+                          dtstart_date = parse_date_only(dtstart)
+                          dtend_date   = parse_date_only(dtend)
+                          if dtstart_date and dtend_date and dtend_date <= dtstart_date:
+                              in_event = False
+                              continue
                       out.append('BEGIN:VEVENT')
-                      out.extend(ev)
+                      out.extend(shifted_ev)
                       out.append('SUMMARY:Booked')
                       out.append('TRANSP:OPAQUE')
                       out.append('END:VEVENT')

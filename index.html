@@ -1418,10 +1418,50 @@ function renderPriceOnCell(cellEl, date) {
   cellEl.appendChild(priceEl);
 }
 
+function dateKeyFromEventBoundary(value) {
+  if (!value) return null;
+  const m = String(value).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? `${m[1]}-${m[2]}-${m[3]}` : null;
+}
+
+function addDaysToDateKey(dateKey, days) {
+  const [year, month, day] = dateKey.split('-').map(Number);
+  const d = new Date(Date.UTC(year, month - 1, day + days));
+  return d.toISOString().slice(0, 10);
+}
+
+function getBookedDateSet() {
+  // Returns a Set of 'YYYY-MM-DD' strings for every day that overlaps any
+  // background event in the currently rendered view. FullCalendar renders
+  // multi-day background events as a single DOM element in the first cell
+  // of each row segment (with oversized negative right offset), so we can't
+  // find "covered" cells via DOM — we walk event date ranges instead.
+  const dates = new Set();
+  if (!calendar) return dates;
+  calendar.getEvents().forEach(e => {
+    const start = dateKeyFromEventBoundary(e.startStr);
+    if (!start) return;
+    let cursor = start;
+    let end = e.endStr ? dateKeyFromEventBoundary(e.endStr) : addDaysToDateKey(start, 1);
+    if (!end || end <= start) end = addDaysToDateKey(start, 1);
+    while (cursor < end) {
+      dates.add(cursor);
+      cursor = addDaysToDateKey(cursor, 1);
+    }
+  });
+  return dates;
+}
+
 function refreshAllPrices() {
+  const booked = getBookedDateSet();
   document.querySelectorAll('#calendar .fc-daygrid-day[data-date]').forEach(cell => {
     const dateStr = cell.getAttribute('data-date');
     if (!dateStr) return;
+    if (booked.has(dateStr)) {
+      const old = cell.querySelector('.price-overlay');
+      if (old) old.remove();
+      return;
+    }
     renderPriceOnCell(cell, new Date(dateStr + 'T00:00:00'));
   });
 }
@@ -1438,7 +1478,11 @@ function initCalendar() {
     eventDidMount: function(info) {
       info.el.style.backgroundColor = 'rgba(232,102,77,0.75)';
       info.el.style.borderColor = 'rgba(232,102,77,0.9)';
-    }
+    },
+    // Fires whenever the event set changes (async iCal loads, month change,
+    // tab switch). We need to strip the price overlay from newly-booked cells
+    // and restore it on cells that were booked before but no longer are.
+    eventsSet: function() { refreshAllPrices(); }
   });
   calendar.render();
 }
