@@ -479,6 +479,8 @@
   .fc .fc-button-primary:hover { background: var(--ocean-light); border-color: var(--ocean-light); }
   .fc .fc-daygrid-day.booked-full { background: rgba(232,102,77,0.12); }
   .fc .fc-daygrid-day.booked-partial { background: rgba(217,199,165,0.3); }
+  /* Hide the per-night price on any day cell that is booked (has a bg event). */
+  .fc .fc-daygrid-day:has(.fc-bg-event) .price-overlay { display: none; }
   .fc-event-title { font-weight: 600; }
   .cal-legend { display: flex; gap: 18px; margin-top: 1rem; flex-wrap: wrap; font-size: 0.9rem; }
   .cal-legend span { display: flex; align-items: center; gap: 8px; color: var(--text-muted); }
