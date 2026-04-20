@@ -30,7 +30,7 @@ def test_sanitize_output_parses_as_valid_ical():
     """icalendar library round-trips every fixture without raising."""
     for fixture in ['empty', 'busy_event', 'free_event', 'guest_details',
                     'folded_description', 'one_night', 'whole_week',
-                    'rrule_event', 'multiple_events']:
+                    'rrule_event', 'multiple_events', 'timed_event']:
         out = sanitize(_load(fixture))
         Calendar.from_ical(out)  # would raise on malformed iCal
 
@@ -72,22 +72,33 @@ def test_dtend_shifted_back_one_day_for_multi_night_booking():
     assert events[0]['DTEND'].to_ical() == b'20260429'
 
 
-def test_one_night_booking_collapses_to_single_day_block():
-    """A 1-night stay (DTSTART:15, DTEND:16) should shift to DTEND:15 —
-    blocks the one night the guest is actually staying."""
+def test_one_night_booking_leaves_checkout_day_free():
+    """A 1-night stay under our calendar convention includes check-in and
+    checkout dates. Google emits DTEND:17, which shifts to DTEND:16 so the
+    checkout day remains free."""
     out = sanitize(_load('one_night'))
     events = _events(out)
     assert len(events) == 1
     assert events[0]['DTSTART'].to_ical() == b'20260515'
-    assert events[0]['DTEND'].to_ical() == b'20260515'
+    assert events[0]['DTEND'].to_ical() == b'20260516'
 
 
 def test_single_day_event_dropped_entirely():
-    """An event with identical DTSTART and DTEND (Google Calendar
-    artefact) represents zero overnight stays — drop it, don't emit
-    a zero-duration event."""
+    """A single selected all-day date collapses after the checkout-day
+    shift and represents zero overnight stays — drop it."""
     out = sanitize(_load('single_day'))
     assert 'BEGIN:VEVENT' not in out
+
+
+def test_timed_event_dtend_not_shifted():
+    """Timed events already encode the precise checkout moment. Shifting
+    their DTEND would make ordinary overnight timed bookings end before
+    they start."""
+    out = sanitize(_load('timed_event'))
+    events = _events(out)
+    assert len(events) == 1
+    assert events[0]['DTSTART'].to_ical() == b'20260601T160000'
+    assert events[0]['DTEND'].to_ical() == b'20260602T100000'
 
 
 def test_guest_pii_stripped_from_output():
@@ -166,7 +177,7 @@ def test_rrule_and_exdate_preserved():
 def test_multiple_events_sanitized_and_single_day_dropped():
     out = sanitize(_load('multiple_events'))
     events = _events(out)
-    # Fixture has 3 VEVENTs; the third is a DTSTART==DTEND artefact
+    # Fixture has 3 VEVENTs; the third collapses after checkout-day shift
     # and must be dropped.
     assert len(events) == 2
     uids = {str(e['UID']) for e in events}
@@ -230,6 +241,15 @@ def test_shift_dtend_standalone_helper():
         shift_dtend_back_one_day('DTEND:20240301')
         == 'DTEND:20240229'
     )  # leap year
+    # Timed DTEND lines are precise checkout moments; leave them untouched.
+    assert (
+        shift_dtend_back_one_day('DTEND;TZID=Atlantic/Canary:20260602T100000')
+        == 'DTEND;TZID=Atlantic/Canary:20260602T100000'
+    )
+    assert (
+        shift_dtend_back_one_day('DTEND:20260602T100000Z')
+        == 'DTEND:20260602T100000Z'
+    )
     # Non-DTEND lines untouched
     assert (
         shift_dtend_back_one_day('DTSTART;VALUE=DATE:20260430')
@@ -240,7 +260,7 @@ def test_shift_dtend_standalone_helper():
 @pytest.mark.parametrize('fixture', [
     'empty', 'busy_event', 'free_event', 'guest_details',
     'folded_description', 'one_night', 'whole_week',
-    'rrule_event', 'multiple_events',
+    'rrule_event', 'multiple_events', 'timed_event',
 ])
 def test_no_literal_transparent_in_output(fixture):
     """Belt-and-braces companion to test_transp_always_opaque."""

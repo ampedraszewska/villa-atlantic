@@ -16,12 +16,12 @@ Three jobs:
    "Free" in Google Calendar still blocks the date on the site. Parents
    shouldn't have to remember the availability dropdown.
 
-3. **Checkout-day rule**: iCal DTEND for all-day events is exclusive, so a
-   booking Apr 22 .. Apr 29 inclusive is DTEND:20260430. We shift DTEND
-   back by one day so the event only blocks the nights, leaving the
-   checkout day free for the next guest to check in. If DTSTART == DTEND
-   (a single-day artefact that would collapse to zero duration) we drop
-   the event entirely — it represents zero overnight stays.
+3. **Checkout-day rule**: if a booking ends Apr 29 (guest leaves that
+   morning), Apr 29 should stay AVAILABLE because the next guest can check
+   in that same day. The shift only applies to date-only all-day events.
+   Timed events already encode a precise checkout moment and shifting them
+   would corrupt duration. If the all-day shift collapses an event to zero
+   duration, we drop the event entirely.
 
 Use as a library (`from sanitize_ical import sanitize`) or as a CLI:
 
@@ -40,7 +40,8 @@ import sys
 KEEP_IN_EVENT = {'DTSTART', 'DTEND', 'UID', 'RRULE', 'EXDATE', 'RECURRENCE-ID'}
 STRIP_AT_CAL = {'X-WR-CALDESC', 'X-WR-CALNAME'}
 
-_DATE_PATTERN = re.compile(r'^(DTEND[^:]*:)(\d{8})(T\d{6}Z?)?$')
+_DATE_ONLY_DTEND = re.compile(r'^(DTEND[^:]*:)(\d{8})$')
+_DATE_ONLY_FIELD = re.compile(r'^(?:DTSTART|DTEND)[^:]*:(\d{8})$')
 _FOLDED_LINE = re.compile(r'\r?\n[ \t]')
 
 
@@ -50,24 +51,30 @@ def unfold(text: str) -> str:
     return _FOLDED_LINE.sub('', text)
 
 
+def parse_date_only(line: str) -> datetime.date | None:
+    """Parse a date-only DTSTART/DTEND content line."""
+    m = _DATE_ONLY_FIELD.match(line)
+    if not m:
+        return None
+    date_str = m.group(1)
+    return datetime.date(int(date_str[:4]), int(date_str[4:6]), int(date_str[6:8]))
+
+
 def shift_dtend_back_one_day(line: str) -> str:
-    """Return DTEND line with its date shifted back one day. Non-DTEND
-    lines and lines without a parseable 8-digit date are returned
-    unchanged."""
-    m = _DATE_PATTERN.match(line)
+    """Shift a date-only DTEND line back one day."""
+    m = _DATE_ONLY_DTEND.match(line)
     if not m:
         return line
-    prefix, date_str, time_part = m.groups()
+    prefix, date_str = m.groups()
     d = datetime.date(int(date_str[:4]), int(date_str[4:6]), int(date_str[6:8]))
     new_d = d - datetime.timedelta(days=1)
-    return prefix + new_d.strftime('%Y%m%d') + (time_part or '')
+    return prefix + new_d.strftime('%Y%m%d')
 
 
 def sanitize(src: str) -> str:
     """Sanitize raw Google iCal text and return the public-safe version.
 
-    Pure function, deterministic, no I/O. Safe to call repeatedly
-    (idempotent on already-sanitized input)."""
+    Pure function, deterministic, no I/O."""
     src = unfold(src).replace('\r\n', '\n')
     out: list[str] = []
     in_event = False
@@ -77,19 +84,19 @@ def sanitize(src: str) -> str:
             in_event, ev = True, []
             continue
         if line == 'END:VEVENT':
-            dtstart = next((l for l in ev if l.startswith('DTSTART')), None)
-            dtend = next((l for l in ev if l.startswith('DTEND')), None)
+            shifted_ev = [shift_dtend_back_one_day(l) for l in ev]
+            dtstart = next((l for l in shifted_ev if l.startswith('DTSTART')), None)
+            dtend = next((l for l in shifted_ev if l.startswith('DTEND')), None)
             if dtstart and dtend:
-                dtstart_date = re.search(r'(\d{8})', dtstart)
-                dtend_date = re.search(r'(\d{8})', dtend)
-                if (dtstart_date and dtend_date
-                        and dtstart_date.group(1) == dtend_date.group(1)):
-                    # Zero-duration event (Google's single-day artefact) —
-                    # represents no actual overnight stay, skip.
+                dtstart_date = parse_date_only(dtstart)
+                dtend_date = parse_date_only(dtend)
+                if dtstart_date and dtend_date and dtend_date <= dtstart_date:
+                    # The checkout-day shift collapsed this all-day event.
+                    # It represents no actual overnight stay, so skip it.
                     in_event = False
                     continue
             out.append('BEGIN:VEVENT')
-            out.extend(shift_dtend_back_one_day(l) for l in ev)
+            out.extend(shifted_ev)
             out.append('SUMMARY:Booked')
             out.append('TRANSP:OPAQUE')
             out.append('END:VEVENT')

@@ -1418,6 +1418,18 @@ function renderPriceOnCell(cellEl, date) {
   cellEl.appendChild(priceEl);
 }
 
+function dateKeyFromEventBoundary(value) {
+  if (!value) return null;
+  const m = String(value).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? `${m[1]}-${m[2]}-${m[3]}` : null;
+}
+
+function addDaysToDateKey(dateKey, days) {
+  const [year, month, day] = dateKey.split('-').map(Number);
+  const d = new Date(Date.UTC(year, month - 1, day + days));
+  return d.toISOString().slice(0, 10);
+}
+
 function getBookedDateSet() {
   // Returns a Set of 'YYYY-MM-DD' strings for every day that overlaps any
   // background event in the currently rendered view. FullCalendar renders
@@ -1427,12 +1439,14 @@ function getBookedDateSet() {
   const dates = new Set();
   if (!calendar) return dates;
   calendar.getEvents().forEach(e => {
-    if (!e.startStr) return;
-    const cursor = new Date(e.startStr + 'T00:00:00');
-    const end = e.endStr ? new Date(e.endStr + 'T00:00:00') : new Date(cursor.getTime() + 86400000);
+    const start = dateKeyFromEventBoundary(e.startStr);
+    if (!start) return;
+    let cursor = start;
+    let end = e.endStr ? dateKeyFromEventBoundary(e.endStr) : addDaysToDateKey(start, 1);
+    if (!end || end <= start) end = addDaysToDateKey(start, 1);
     while (cursor < end) {
-      dates.add(cursor.toISOString().slice(0, 10));
-      cursor.setDate(cursor.getDate() + 1);
+      dates.add(cursor);
+      cursor = addDaysToDateKey(cursor, 1);
     }
   });
   return dates;
