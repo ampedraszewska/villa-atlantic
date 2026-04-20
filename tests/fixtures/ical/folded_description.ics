@@ -1,0 +1,17 @@
+BEGIN:VCALENDAR
+PRODID:-//Google Inc//Google Calendar 70.9054//EN
+VERSION:2.0
+X-WR-CALDESC:Rezerwacje apartamentu Cliffs (góra) — Villa Atlantic Tenerife
+ . Publiczny widok pokazuje tylko wolny/zajęty\, bez szczegółów gości.
+BEGIN:VEVENT
+DTSTART;VALUE=DATE:20260810
+DTEND;VALUE=DATE:20260817
+UID:event-fold-004@google.com
+SUMMARY:Bardzo długi tytuł rezerwacji który Google Calendar może zawinąć na k
+ ilka linii kontynuacji RFC 5545 z przedrostkiem spacji
+DESCRIPTION:Kontakt do gości — Anna Nowak\,\n email: anna.nowak@example.com\
+ ,\n telefon: +48 600 123 456.\nGoście proszą o wczesny check-in od godziny 1
+ 0:00\, przywożą małego pieska (rasa labrador\, 5 kg).
+TRANSP:OPAQUE
+END:VEVENT
+END:VCALENDAR

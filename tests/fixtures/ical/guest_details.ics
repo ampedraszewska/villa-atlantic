@@ -1,0 +1,22 @@
+BEGIN:VCALENDAR
+PRODID:-//Google Inc//Google Calendar 70.9054//EN
+VERSION:2.0
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:Villa Atlantic — Gardens
+BEGIN:VEVENT
+DTSTART;VALUE=DATE:20260715
+DTEND;VALUE=DATE:20260722
+DTSTAMP:20260420T103654Z
+UID:event-pii-003@google.com
+SUMMARY:Kowalski Jan — 4 osoby + pies
+DESCRIPTION:Kontakt: jan.kowalski@example.com\, +48 501 234 567. Dwójka dzieci\, potrzeba łóżeczka.
+LOCATION:Villa Atlantic — Gardens (apartament dolny)
+ATTENDEE;CN=Jan Kowalski:mailto:jan.kowalski@example.com
+ORGANIZER;CN=Aleksandra:mailto:a.pedraszewska@gmail.com
+URL:https://example.com/booking/abc123
+STATUS:CONFIRMED
+CLASS:PRIVATE
+TRANSP:OPAQUE
+END:VEVENT
+END:VCALENDAR
