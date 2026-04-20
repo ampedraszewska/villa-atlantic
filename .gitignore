@@ -1,3 +1,4 @@
 images/originals/
 .DS_Store
 .gstack/
+__pycache__/
