@@ -35,19 +35,26 @@ jobs:
 
           # Checkout-day rule: if a booking ends Apr 29 (guest leaves that morning),
           # Apr 29 should stay AVAILABLE — the next guest can check in that same day.
-          # iCal DTEND for all-day events is end-exclusive, so a booking spanning
-          # Apr 22..29 inclusive is encoded as DTEND:20260430. We shift DTEND back
-          # by one day so the event only blocks the nights, not the checkout day.
-          DATE_PATTERN = re.compile(r'^(DTEND[^:]*:)(\d{8})(T\d{6}Z?)?$')
+          # The shift only applies to date-only all-day events. Timed events already
+          # encode a precise checkout moment and shifting them would corrupt duration.
+          DATE_ONLY_DTEND = re.compile(r'^(DTEND[^:]*:)(\d{8})$')
+          DATE_ONLY_FIELD = re.compile(r'^(?:DTSTART|DTEND)[^:]*:(\d{8})$')
+
+          def parse_date_only(line):
+              m = DATE_ONLY_FIELD.match(line)
+              if not m:
+                  return None
+              date_str = m.group(1)
+              return datetime.date(int(date_str[:4]), int(date_str[4:6]), int(date_str[6:8]))
 
           def shift_dtend_back_one_day(line):
-              m = DATE_PATTERN.match(line)
+              m = DATE_ONLY_DTEND.match(line)
               if not m:
                   return line
-              prefix, date_str, time_part = m.groups()
+              prefix, date_str = m.groups()
               d = datetime.date(int(date_str[:4]), int(date_str[4:6]), int(date_str[6:8]))
               new_d = d - datetime.timedelta(days=1)
-              return prefix + new_d.strftime('%Y%m%d') + (time_part or '')
+              return prefix + new_d.strftime('%Y%m%d')
 
           def sanitize(src):
               src = unfold(src).replace('\r\n', '\n')
@@ -57,20 +64,21 @@ jobs:
                       in_event, ev = True, []
                       continue
                   if line == 'END:VEVENT':
-                      # Safety: if shifting DTEND would collapse the event to zero
-                      # duration (single-day "event" in Google Calendar), skip it
-                      # entirely — a one-day event with same check-in/out represents
-                      # no actual overnight booking.
-                      dtstart = next((l for l in ev if l.startswith('DTSTART')), None)
-                      dtend   = next((l for l in ev if l.startswith('DTEND')), None)
+                      shifted_ev = [shift_dtend_back_one_day(l) for l in ev]
+                      # Safety: if the checkout-day shift collapses an all-day event
+                      # to zero duration, skip it entirely. Under our Google Calendar
+                      # convention, a real one-night stay includes both check-in and
+                      # checkout dates and still has DTEND > DTSTART after shifting.
+                      dtstart = next((l for l in shifted_ev if l.startswith('DTSTART')), None)
+                      dtend   = next((l for l in shifted_ev if l.startswith('DTEND')), None)
                       if dtstart and dtend:
-                          dtstart_date = re.search(r'(\d{8})', dtstart)
-                          dtend_date   = re.search(r'(\d{8})', dtend)
-                          if dtstart_date and dtend_date and dtstart_date.group(1) == dtend_date.group(1):
+                          dtstart_date = parse_date_only(dtstart)
+                          dtend_date   = parse_date_only(dtend)
+                          if dtstart_date and dtend_date and dtend_date <= dtstart_date:
                               in_event = False
                               continue
                       out.append('BEGIN:VEVENT')
-                      out.extend(shift_dtend_back_one_day(l) for l in ev)
+                      out.extend(shifted_ev)
                       out.append('SUMMARY:Booked')
                       out.append('TRANSP:OPAQUE')
                       out.append('END:VEVENT')
