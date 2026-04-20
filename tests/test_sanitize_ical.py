@@ -7,6 +7,8 @@ produces for our public feed.
 """
 import pathlib
 import re
+import subprocess
+import sys
 
 import pytest
 from icalendar import Calendar
@@ -14,6 +16,11 @@ from icalendar import Calendar
 from sanitize_ical import KEEP_IN_EVENT, sanitize, shift_dtend_back_one_day
 
 FIXTURES = pathlib.Path(__file__).parent / 'fixtures' / 'ical'
+SCRIPT = (
+    pathlib.Path(__file__).resolve().parent.parent
+    / 'scripts'
+    / 'sanitize_ical.py'
+)
 
 
 def _load(name: str) -> str:
@@ -99,6 +106,70 @@ def test_timed_event_dtend_not_shifted():
     assert len(events) == 1
     assert events[0]['DTSTART'].to_ical() == b'20260601T160000'
     assert events[0]['DTEND'].to_ical() == b'20260602T100000'
+
+
+def test_cli_entrypoint_preserves_checkout_edge_case_contract(tmp_path):
+    """The sync workflow invokes the sanitizer as a script, so cover the
+    checkout-day contract through that entrypoint too: one-night stays are
+    kept, zero-night all-day artefacts are dropped, and timed stays are not
+    shifted."""
+    raw = tmp_path / 'raw.ics'
+    out_path = tmp_path / 'public.ics'
+    raw.write_text(
+        '\n'.join([
+            'BEGIN:VCALENDAR',
+            'PRODID:-//Google Inc//Google Calendar 70.9054//EN',
+            'VERSION:2.0',
+            'BEGIN:VEVENT',
+            'DTSTART;VALUE=DATE:20260515',
+            'DTEND;VALUE=DATE:20260517',
+            'UID:one-night-cli@google.com',
+            'SUMMARY:One night stay',
+            'END:VEVENT',
+            'BEGIN:VEVENT',
+            'DTSTART;VALUE=DATE:20260520',
+            'DTEND;VALUE=DATE:20260521',
+            'UID:zero-night-cli@google.com',
+            'SUMMARY:Zero-night artefact',
+            'END:VEVENT',
+            'BEGIN:VEVENT',
+            'DTSTART;TZID=Atlantic/Canary:20260601T160000',
+            'DTEND;TZID=Atlantic/Canary:20260602T100000',
+            'UID:timed-cli@google.com',
+            'SUMMARY:Timed stay',
+            'END:VEVENT',
+            'END:VCALENDAR',
+            '',
+        ]),
+        encoding='utf-8',
+    )
+
+    subprocess.run(
+        [sys.executable, str(SCRIPT), str(raw), str(out_path)],
+        check=True,
+    )
+
+    events = {
+        str(event['UID']): event
+        for event in _events(out_path.read_text(encoding='utf-8'))
+    }
+    assert set(events) == {'one-night-cli@google.com', 'timed-cli@google.com'}
+    assert (
+        events['one-night-cli@google.com']['DTSTART'].to_ical()
+        == b'20260515'
+    )
+    assert (
+        events['one-night-cli@google.com']['DTEND'].to_ical()
+        == b'20260516'
+    )
+    assert (
+        events['timed-cli@google.com']['DTSTART'].to_ical()
+        == b'20260601T160000'
+    )
+    assert (
+        events['timed-cli@google.com']['DTEND'].to_ical()
+        == b'20260602T100000'
+    )
 
 
 def test_guest_pii_stripped_from_output():
