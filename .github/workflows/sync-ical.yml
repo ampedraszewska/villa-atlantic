@@ -14,14 +14,62 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Fetch iCal feeds
+      - name: Fetch and sanitize iCal feeds
         run: |
           mkdir -p ical
-          curl -fsS "https://calendar.google.com/calendar/ical/b2a835e6bed7c0910197c6510d83e2183cd6a0ef16dc04db27d6126d82f53f8b%40group.calendar.google.com/public/basic.ics" -o ical/cliffs.ics
-          curl -fsS "https://calendar.google.com/calendar/ical/38db9cfe40fa5b786c8dda63f375310c28e3a776d2b47db18d12b90c94131042%40group.calendar.google.com/public/basic.ics" -o ical/gardens.ics
-          # Strip the DTSTAMP line which changes on every fetch, so commits only
-          # happen when actual event data changes.
-          sed -i '/^DTSTAMP:/d' ical/cliffs.ics ical/gardens.ics
+          curl -fsS "https://calendar.google.com/calendar/ical/b2a835e6bed7c0910197c6510d83e2183cd6a0ef16dc04db27d6126d82f53f8b%40group.calendar.google.com/public/basic.ics" -o ical/cliffs.raw.ics
+          curl -fsS "https://calendar.google.com/calendar/ical/38db9cfe40fa5b786c8dda63f375310c28e3a776d2b47db18d12b90c94131042%40group.calendar.google.com/public/basic.ics" -o ical/gardens.raw.ics
+
+          # Sanitize: strip guest details from each VEVENT, force TRANSP:OPAQUE
+          # so "Free" events still block on the site (parents shouldn't have to
+          # remember to mark availability=Busy when creating a booking).
+          python3 - <<'PY'
+          import re, pathlib
+
+          KEEP_IN_EVENT = {'DTSTART', 'DTEND', 'UID', 'RRULE', 'EXDATE', 'RECURRENCE-ID'}
+          STRIP_AT_CAL  = {'X-WR-CALDESC', 'X-WR-CALNAME'}
+
+          def unfold(text):
+              # RFC 5545 line folding: a line starting with space/tab continues the previous one.
+              return re.sub(r'\r?\n[ \t]', '', text)
+
+          def sanitize(src):
+              src = unfold(src).replace('\r\n', '\n')
+              out, in_event, ev = [], False, []
+              for line in src.split('\n'):
+                  if line == 'BEGIN:VEVENT':
+                      in_event, ev = True, []
+                      continue
+                  if line == 'END:VEVENT':
+                      out.append('BEGIN:VEVENT')
+                      out.extend(ev)
+                      out.append('SUMMARY:Booked')
+                      out.append('TRANSP:OPAQUE')
+                      out.append('END:VEVENT')
+                      in_event = False
+                      continue
+                  key = line.split(':', 1)[0].split(';', 1)[0]
+                  if in_event:
+                      if key in KEEP_IN_EVENT:
+                          ev.append(line)
+                  else:
+                      if key in STRIP_AT_CAL:
+                          continue
+                      # DTSTAMP at calendar level changes every fetch and would cause
+                      # spurious commits — drop it so we only commit real data changes.
+                      if key == 'DTSTAMP':
+                          continue
+                      out.append(line)
+              return '\r\n'.join(out) + '\r\n'
+
+          for name in ('cliffs', 'gardens'):
+              raw = pathlib.Path(f'ical/{name}.raw.ics').read_text(encoding='utf-8')
+              pathlib.Path(f'ical/{name}.ics').write_text(sanitize(raw), encoding='utf-8')
+          PY
+
+          rm -f ical/*.raw.ics
+          echo "--- cliffs ---"; cat ical/cliffs.ics
+          echo "--- gardens ---"; cat ical/gardens.ics
 
       - name: Commit if changed
         run: |
