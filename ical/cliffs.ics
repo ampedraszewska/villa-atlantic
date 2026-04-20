@@ -3,8 +3,13 @@ PRODID:-//Google Inc//Google Calendar 70.9054//EN
 VERSION:2.0
 CALSCALE:GREGORIAN
 METHOD:PUBLISH
-X-WR-CALNAME:Villa Atlantic — Cliffs
 X-WR-TIMEZONE:Atlantic/Canary
-X-WR-CALDESC:Rezerwacje apartamentu Cliffs (góra) — Villa Atlantic Tenerife
- . Publiczny widok pokazuje tylko wolny/zajęty\, bez szczegółów gości.
+BEGIN:VEVENT
+DTSTART;VALUE=DATE:20260422
+DTEND;VALUE=DATE:20260430
+UID:5eur5vj8uhhjt7q93dloj80o7p@google.com
+SUMMARY:Booked
+TRANSP:OPAQUE
+END:VEVENT
 END:VCALENDAR
+

@@ -3,8 +3,6 @@ PRODID:-//Google Inc//Google Calendar 70.9054//EN
 VERSION:2.0
 CALSCALE:GREGORIAN
 METHOD:PUBLISH
-X-WR-CALNAME:Villa Atlantic — Gardens
 X-WR-TIMEZONE:Atlantic/Canary
-X-WR-CALDESC:Rezerwacje apartamentu Gardens (dół) — Villa Atlantic Tenerife
- . Publiczny widok pokazuje tylko wolny/zajęty\, bez szczegółów gości.
 END:VCALENDAR
+
