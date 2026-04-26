@@ -7,6 +7,7 @@ Strona statyczna (jeden plik `index.html`) dla willi Villa Atlantic w Puerto de 
 ## Jak edytować kalendarz dostępności (instrukcja dla mamy)
 
 Strona automatycznie pokazuje zajęte dni z dwóch Twoich kalendarzy Google:
+
 - **Villa Atlantic — Cliffs** (góra)
 - **Villa Atlantic — Gardens** (dół)
 
@@ -32,6 +33,7 @@ W Google Calendar kliknij na wydarzenie → **Edytuj** albo **Kosz**.
 ### Uwaga: ta sama data dla góry i dołu = cała willa zajęta
 
 Na stronie w widoku "Cała willa":
+
 - Jeśli **obie** (góra i dół) są zajęte tego samego dnia → dzień pokazuje się jako **zajęty**.
 - Jeśli **tylko jedna** z nich jest zajęta → dzień pokazuje się jako **częściowo zajęty** (jeden apartament wciąż wolny).
 
@@ -60,7 +62,7 @@ Dodaj wydarzenie w **obu** kalendarzach (Cliffs + Gardens) na te same daty.
    - Otwórz `index.html` w edytorze
    - Znajdź linie:
      ```js
-     const ICAL_CLIFFS  = 'CLIFFS_ICAL_URL';
+     const ICAL_CLIFFS = 'CLIFFS_ICAL_URL';
      const ICAL_GARDENS = 'GARDENS_ICAL_URL';
      ```
    - Zastąp `'CLIFFS_ICAL_URL'` pełnym linkiem .ics dla Cliffs, analogicznie Gardens
@@ -75,6 +77,7 @@ Dodaj wydarzenie w **obu** kalendarzach (Cliffs + Gardens) na te same daty.
 ## Jak edytować treść strony
 
 Otwórz `index.html` w edytorze tekstu (VS Code, Notepad++, TextEdit). Polski i angielski są w tym samym pliku:
+
 - Polski tekst: szukaj `data-lang="pl"`
 - Angielski: szukaj `data-lang="en"`
 
@@ -83,6 +86,7 @@ Zmień tekst, zapisz, wgraj zmiany na serwer (patrz: deploy).
 ### Co do uzupełnienia przed publikacją
 
 W `index.html` są placeholdery do wymiany:
+
 - `VV-XXXXX` (2 miejsca: sekcja licencji + stopka) → **numer licencji VV**
 - `hello@villaatlantic.com` → **email kontaktowy**
 - `+48 000 000 000` → **numer telefonu** (2 miejsca: w atrybucie `href="https://wa.me/..."` i w wyświetlanym tekście)
