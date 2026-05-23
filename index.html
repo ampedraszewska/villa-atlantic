@@ -2862,6 +2862,12 @@
           initialView: 'dayGridMonth',
           height: 'auto',
           firstDay: 1,
+          validRange: {
+            start: (function () {
+              const d = new Date();
+              return new Date(d.getFullYear(), d.getMonth(), 1);
+            })(),
+          },
           headerToolbar: { left: 'prev,next today', center: 'title', right: '' },
           eventSources: buildSources(currentView),
           dayCellDidMount: function (info) {
