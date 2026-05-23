@@ -2762,6 +2762,12 @@
         });
       });
 
+      function trackAnalytics(name, params) {
+        if (typeof gtag !== 'function') return;
+        const lang = document.documentElement.lang || 'en';
+        gtag('event', name, Object.assign({ lang: lang }, params || {}));
+      }
+
       // ─── CALENDAR ──────────────────────────────────────
       // Google Calendar iCal feeds — replace with real public .ics URLs
       // iCal feeds are mirrored from Google Calendar by .github/workflows/sync-ical.yml
@@ -2887,6 +2893,12 @@
           eventDidMount: function (info) {
             info.el.style.backgroundColor = 'rgba(232,102,77,0.75)';
             info.el.style.borderColor = 'rgba(232,102,77,0.9)';
+          },
+          dateClick: function (info) {
+            trackAnalytics('calendar_date_click', {
+              date: info.dateStr,
+              apartment_view: currentView,
+            });
           },
           // Fires whenever the event set changes (async iCal loads, month change,
           // tab switch). We need to strip the price overlay from newly-booked cells
@@ -3068,9 +3080,7 @@
       // ─── ANALYTICS: custom GA4 events ──────────────────
       (function () {
         function track(name, params) {
-          if (typeof gtag !== 'function') return;
-          var lang = document.documentElement.lang || 'en';
-          gtag('event', name, Object.assign({ lang: lang }, params || {}));
+          trackAnalytics(name, params);
         }
 
         // generate_lead — inquiry form submit
