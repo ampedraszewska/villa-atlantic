@@ -3193,12 +3193,16 @@
               track('video_unmute', { video_title: 'hero' });
             }
           });
+          vid.addEventListener('timeupdate', function () {
+            if (!Number.isFinite(vid.duration) || vid.duration <= 0) return;
+            if (vid.currentTime / vid.duration >= 0.9) v('video_complete');
+          });
           vid.addEventListener('ended', function () {
-            track('video_complete', { video_title: 'hero' });
+            v('video_complete');
           });
         }
 
-        // section_view — IntersectionObserver, once per section per session
+        // section_view — IntersectionObserver, once per section per page view
         if ('IntersectionObserver' in window) {
           var seen = {};
           var sectionIds = [
@@ -3226,7 +3230,7 @@
                 io.unobserve(e.target);
               });
             },
-            { threshold: 0.5 }
+            { rootMargin: '0px 0px -40% 0px', threshold: 0 }
           );
           sectionIds.forEach(function (id) {
             var el = document.getElementById(id);
