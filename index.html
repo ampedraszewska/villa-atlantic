@@ -27,6 +27,23 @@
     </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Google Analytics 4 -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-VZBYMXVEN5"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag('js', new Date());
+      gtag('config', 'G-VZBYMXVEN5', {
+        anonymize_ip: true,
+        send_page_view: true,
+        allow_google_signals: true,
+        allow_ad_personalization_signals: true,
+      });
+    </script>
+
     <title>Villa Atlantic — Oceanfront holiday villa in Puerto de Santiago, Tenerife</title>
 
     <meta
@@ -2745,6 +2762,12 @@
         });
       });
 
+      function trackAnalytics(name, params) {
+        if (typeof gtag !== 'function') return;
+        const lang = document.documentElement.lang || 'en';
+        gtag('event', name, Object.assign({ lang: lang }, params || {}));
+      }
+
       // ─── CALENDAR ──────────────────────────────────────
       // Google Calendar iCal feeds — replace with real public .ics URLs
       // iCal feeds are mirrored from Google Calendar by .github/workflows/sync-ical.yml
@@ -2876,6 +2899,12 @@
           eventDidMount: function (info) {
             info.el.style.backgroundColor = 'rgba(232,102,77,0.75)';
             info.el.style.borderColor = 'rgba(232,102,77,0.9)';
+          },
+          dateClick: function (info) {
+            trackAnalytics('calendar_date_click', {
+              date: info.dateStr,
+              apartment_view: currentView,
+            });
           },
           // Fires whenever the event set changes (async iCal loads, month change,
           // tab switch). We need to strip the price overlay from newly-booked cells
@@ -3053,6 +3082,185 @@
       })();
 
       document.getElementById('copyright-year').textContent = new Date().getFullYear();
+
+      // ─── ANALYTICS: custom GA4 events ──────────────────
+      (function () {
+        function track(name, params) {
+          trackAnalytics(name, params);
+        }
+
+        // generate_lead — inquiry form submit
+        var form = document.querySelector('.inquiry-form');
+        if (form) {
+          form.addEventListener('submit', function () {
+            var sel = form.querySelector('select[name="option"]');
+            track('generate_lead', { apartment: sel ? sel.value : 'unknown' });
+          });
+        }
+
+        // contact_click — email / whatsapp / maps
+        var contactMap = {
+          'contact-email': 'email',
+          'contact-whatsapp': 'whatsapp',
+        };
+        Object.keys(contactMap).forEach(function (id) {
+          var el = document.getElementById(id);
+          if (el) {
+            el.addEventListener('click', function () {
+              track('contact_click', { method: contactMap[id] });
+            });
+          }
+        });
+        document
+          .querySelectorAll('a.location-map, a[href*="maps.app.goo.gl"]')
+          .forEach(function (a) {
+            a.addEventListener('click', function () {
+              track('contact_click', { method: 'maps' });
+            });
+          });
+
+        // language_switch — capture phase so we read `from` before existing handler swaps it
+        document.querySelectorAll('.lang-switch button[data-set-lang]').forEach(function (btn) {
+          btn.addEventListener(
+            'click',
+            function () {
+              var to = btn.dataset.setLang;
+              var from = document.documentElement.lang || 'en';
+              if (from !== to) track('language_switch', { from_lang: from, to_lang: to });
+            },
+            true
+          );
+        });
+
+        // apartment_view — apartment tab switch
+        document.querySelectorAll('.apt-tab').forEach(function (tab) {
+          tab.addEventListener('click', function () {
+            track('apartment_view', { apartment: tab.dataset.apt });
+          });
+        });
+
+        // calendar_view_switch — calendar tab switch (whole / cliffs / gardens)
+        document.querySelectorAll('.cal-tab').forEach(function (tab) {
+          tab.addEventListener('click', function () {
+            track('calendar_view_switch', { view: tab.dataset.calView });
+          });
+        });
+
+        // gallery_open — independent listener (existing handler opens lightbox, ours just reports)
+        document.querySelectorAll('[data-gallery]').forEach(function (gallery) {
+          var name = gallery.dataset.gallery;
+          var tiles = Array.from(gallery.querySelectorAll('.tile img'));
+          tiles.forEach(function (img, i) {
+            img.parentElement.addEventListener('click', function () {
+              track('gallery_open', {
+                gallery: name,
+                image_index: i,
+                image_src: img.getAttribute('src') || '',
+              });
+            });
+          });
+        });
+
+        // gallery_navigate — prev / next inside lightbox
+        var lb = document.getElementById('lightbox');
+        if (lb) {
+          var prev = lb.querySelector('.lightbox-prev');
+          var next = lb.querySelector('.lightbox-next');
+          if (prev)
+            prev.addEventListener('click', function () {
+              track('gallery_navigate', { direction: 'prev' });
+            });
+          if (next)
+            next.addEventListener('click', function () {
+              track('gallery_navigate', { direction: 'next' });
+            });
+          var closeBtn = lb.querySelector('.lightbox-close');
+          if (closeBtn)
+            closeBtn.addEventListener('click', function () {
+              track('gallery_close', {});
+            });
+        }
+
+        // hero video events
+        var vid = document.querySelector('.hero-video');
+        if (vid) {
+          var fired = {};
+          function v(name) {
+            if (fired[name]) return;
+            fired[name] = true;
+            track(name, {
+              video_title: 'hero',
+              video_current_time: Math.round(vid.currentTime || 0),
+              video_duration: Math.round(vid.duration || 0),
+            });
+          }
+          vid.addEventListener('play', function () {
+            v('video_play');
+          });
+          vid.addEventListener('pause', function () {
+            track('video_pause', {
+              video_title: 'hero',
+              video_current_time: Math.round(vid.currentTime || 0),
+            });
+          });
+          vid.addEventListener('volumechange', function () {
+            if (!vid.muted && !fired.video_unmute) {
+              fired.video_unmute = true;
+              track('video_unmute', { video_title: 'hero' });
+            }
+          });
+          vid.addEventListener('timeupdate', function () {
+            if (!Number.isFinite(vid.duration) || vid.duration <= 0) return;
+            if (vid.currentTime / vid.duration >= 0.9) v('video_complete');
+          });
+          vid.addEventListener('ended', function () {
+            v('video_complete');
+          });
+        }
+
+        // section_view — IntersectionObserver, once per section per page view
+        if ('IntersectionObserver' in window) {
+          var seen = {};
+          var sectionIds = [
+            'options',
+            'about',
+            'apartments',
+            'apt-cliffs',
+            'apt-gardens',
+            'remote-work',
+            'location',
+            'gallery',
+            'pricing',
+            'calendar-section',
+            'reviews',
+            'contact',
+          ];
+          var io = new IntersectionObserver(
+            function (entries) {
+              entries.forEach(function (e) {
+                if (!e.isIntersecting) return;
+                var id = e.target.id;
+                if (seen[id]) return;
+                seen[id] = true;
+                track('section_view', { section_id: id });
+                io.unobserve(e.target);
+              });
+            },
+            { rootMargin: '0px 0px -40% 0px', threshold: 0 }
+          );
+          sectionIds.forEach(function (id) {
+            var el = document.getElementById(id);
+            if (el) io.observe(el);
+          });
+        }
+
+        // scroll_to_top — anchor clicks to #top
+        document.querySelectorAll('a[href="#top"], a[href^="#top"]').forEach(function (a) {
+          a.addEventListener('click', function () {
+            track('scroll_to_top', {});
+          });
+        });
+      })();
     </script>
   </body>
 </html>
