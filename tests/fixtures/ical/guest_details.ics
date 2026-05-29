@@ -13,7 +13,7 @@ SUMMARY:Kowalski Jan — 4 osoby + pies
 DESCRIPTION:Kontakt: jan.kowalski@example.com\, +48 501 234 567. Dwójka dzieci\, potrzeba łóżeczka.
 LOCATION:Villa Atlantic — Gardens (apartament dolny)
 ATTENDEE;CN=Jan Kowalski:mailto:jan.kowalski@example.com
-ORGANIZER;CN=Aleksandra:mailto:a.pedraszewska@gmail.com
+ORGANIZER;CN=Aleksandra:mailto:organizer@example.com
 URL:https://example.com/booking/abc123
 STATUS:CONFIRMED
 CLASS:PRIVATE
