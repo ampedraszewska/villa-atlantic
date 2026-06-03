@@ -44,6 +44,64 @@
       });
     </script>
 
+    <!-- PostHog (Cloud EU) — heatmaps + session replay. Paste the project key
+         below to activate; until then init is skipped (no network call). -->
+    <script>
+      !(function (t, e) {
+        var o, n, p, r;
+        e.__SV ||
+          ((window.posthog = e),
+          (e._i = []),
+          (e.init = function (i, s, a) {
+            function g(t, e) {
+              var o = e.split('.');
+              (2 == o.length && ((t = t[o[0]]), (e = o[1])),
+                (t[e] = function () {
+                  t.push([e].concat(Array.prototype.slice.call(arguments, 0)));
+                }));
+            }
+            (((p = t.createElement('script')).type = 'text/javascript'),
+              (p.crossOrigin = 'anonymous'),
+              (p.async = !0),
+              (p.src =
+                s.api_host.replace('.i.posthog.com', '-assets.i.posthog.com') + '/static/array.js'),
+              (r = t.getElementsByTagName('script')[0]).parentNode.insertBefore(p, r));
+            var u = e;
+            for (
+              void 0 !== a ? (u = e[a] = []) : (a = 'posthog'),
+                u.people = u.people || [],
+                u.toString = function (t) {
+                  var e = 'posthog';
+                  return ('posthog' !== a && (e += '.' + a), t || (e += ' (stub)'), e);
+                },
+                u.people.toString = function () {
+                  return u.toString(1) + '.people (stub)';
+                },
+                o =
+                  'init capture register register_once register_for_session unregister unregister_for_session getFeatureFlag getFeatureFlagPayload isFeatureEnabled reloadFeatureFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSessionId getSurveys getActiveMatchingSurveys renderSurvey canRenderSurvey getNextSurveyStep identify setPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset get_distinct_id getGroups get_session_id get_session_replay_url alias set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException loadToolbar get_property getSessionProperty createPersonProfile opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing clear_opt_in_out_capturing debug getPageViewId captureTraceFeedback captureTraceMetric'.split(
+                    ' '
+                  ),
+                n = 0;
+              n < o.length;
+              n++
+            )
+              g(u, o[n]);
+            e._i.push([i, s, a]);
+          }),
+          (e.__SV = 1));
+      })(document, window.posthog || []);
+
+      // Owner: paste the PostHog Cloud EU project key here to go live.
+      var POSTHOG_KEY = '__POSTHOG_PROJECT_KEY__';
+      if (POSTHOG_KEY.indexOf('__') !== 0) {
+        posthog.init(POSTHOG_KEY, {
+          api_host: 'https://eu.i.posthog.com', // EU/Frankfurt residency
+          enable_heatmaps: true, // scrollmaps/clickmaps = "which section is interesting"
+          persistence: 'memory', // no cookies/localStorage; keeps heatmaps + replay working
+        });
+      }
+    </script>
+
     <title>Villa Atlantic — Oceanfront holiday villa in Puerto de Santiago, Tenerife</title>
 
     <meta
@@ -1342,6 +1400,35 @@
       }
       .lightbox-close:hover {
         background: rgba(255, 255, 255, 0.1);
+      }
+      .lightbox-tool {
+        position: absolute;
+        top: 20px;
+        background: none;
+        border: none;
+        color: white;
+        font-size: 1.5rem;
+        cursor: pointer;
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+      }
+      .lightbox-tool:hover {
+        background: rgba(255, 255, 255, 0.1);
+      }
+      .lightbox-zoom {
+        right: 124px;
+      }
+      .lightbox-fullscreen {
+        right: 74px;
+      }
+      .lightbox img {
+        cursor: zoom-in;
+        transition: transform 0.2s ease;
+      }
+      .lightbox img.zoomed {
+        transform: scale(1.8);
+        cursor: zoom-out;
       }
       .lightbox-nav {
         position: absolute;
@@ -2807,6 +2894,8 @@
     <!-- LIGHTBOX -->
     <div class="lightbox" id="lightbox">
       <button class="lightbox-close" aria-label="Close">✕</button>
+      <button class="lightbox-tool lightbox-zoom" aria-label="Zoom">⤢</button>
+      <button class="lightbox-tool lightbox-fullscreen" aria-label="Fullscreen" hidden>⛶</button>
       <button class="lightbox-nav lightbox-prev" aria-label="Previous">‹</button>
       <img loading="lazy" decoding="async" src="" alt="" />
       <button class="lightbox-nav lightbox-next" aria-label="Next">›</button>
@@ -2994,6 +3083,8 @@
 
       function initCalendar() {
         const el = document.getElementById('calendar');
+        let calLoadTracked = false;
+        let calPrevStart = null;
         calendar = new FullCalendar.Calendar(el, {
           initialView: 'dayGridMonth',
           height: 'auto',
@@ -3018,6 +3109,32 @@
               date: info.dateStr,
               apartment_view: currentView,
             });
+          },
+          // Fires on first render and on every prev/next/today nav. First =
+          // calendar_load; later = calendar_nav (how far ahead people look).
+          datesSet: function (info) {
+            // currentStart = first of the displayed month (info.start includes
+            // prev-month overflow days, which mislabels the target month). Read
+            // local Y-M, not toISOString — UTC conversion shifts a local-midnight
+            // first-of-month back to the previous month in zones ahead of UTC.
+            var month = info.view && info.view.currentStart;
+            function ym(d) {
+              return d ? d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') : '';
+            }
+            if (!calLoadTracked) {
+              calLoadTracked = true;
+              trackAnalytics('calendar_load', { apartment_view: currentView });
+            } else {
+              var dir = 'today';
+              if (calPrevStart && month)
+                dir = month > calPrevStart ? 'next' : month < calPrevStart ? 'prev' : 'today';
+              trackAnalytics('calendar_nav', {
+                direction: dir,
+                target_month: ym(month),
+                apartment_view: currentView,
+              });
+            }
+            calPrevStart = month;
           },
           // Fires whenever the event set changes (async iCal loads, month change,
           // tab switch). We need to strip the price overlay from newly-booked cells
@@ -3088,7 +3205,14 @@
       function setupCalendarLazyLoad() {
         const section = document.getElementById('calendar-section');
         if (!section) return;
-        const trigger = () => loadFullCalendar().then(initCalendar);
+        const trigger = () =>
+          loadFullCalendar()
+            .then(initCalendar)
+            .catch((err) =>
+              trackAnalytics('calendar_load_error', {
+                resource: String((err && err.message) || err || 'unknown').slice(0, 150),
+              })
+            );
 
         // If user deep-links to #calendar-section, load immediately
         if (window.location.hash === '#calendar-section') {
@@ -3149,47 +3273,109 @@
         const closeBtn = lb.querySelector('.lightbox-close');
         const prevBtn = lb.querySelector('.lightbox-prev');
         const nextBtn = lb.querySelector('.lightbox-next');
+        const zoomBtn = lb.querySelector('.lightbox-zoom');
+        const fsBtn = lb.querySelector('.lightbox-fullscreen');
         let currentImages = [];
         let currentIndex = 0;
+        let currentGallery = '';
 
-        function open(images, index) {
+        // Fullscreen API is unsupported on iOS Safari (no <element>.requestFullscreen
+        // for non-video) — only expose the button where it actually works.
+        const fullscreenSupported = !!(
+          lb.requestFullscreen ||
+          lb.webkitRequestFullscreen ||
+          document.fullscreenEnabled
+        );
+        if (fullscreenSupported) fsBtn.hidden = false;
+
+        function currentSrc() {
+          return currentImages[currentIndex] || '';
+        }
+        function resetZoom() {
+          lbImg.classList.remove('zoomed');
+        }
+        function open(images, index, galleryName) {
           currentImages = images;
           currentIndex = index;
+          currentGallery = galleryName || '';
+          resetZoom();
           lbImg.src = images[index];
           lb.classList.add('open');
           document.body.style.overflow = 'hidden';
         }
         function close() {
           lb.classList.remove('open');
+          resetZoom();
           document.body.style.overflow = '';
         }
         function next() {
           currentIndex = (currentIndex + 1) % currentImages.length;
+          resetZoom();
           lbImg.src = currentImages[currentIndex];
         }
         function prev() {
           currentIndex = (currentIndex - 1 + currentImages.length) % currentImages.length;
+          resetZoom();
           lbImg.src = currentImages[currentIndex];
+        }
+        function toggleZoom() {
+          const zoomed = lbImg.classList.toggle('zoomed');
+          trackAnalytics('gallery_zoom', {
+            zoom_state: zoomed ? 'in' : 'out',
+            gallery: currentGallery,
+            image_src: currentSrc(),
+          });
+        }
+        function toggleFullscreen() {
+          if (document.fullscreenElement || document.webkitFullscreenElement) {
+            (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+          } else {
+            (lb.requestFullscreen || lb.webkitRequestFullscreen).call(lb);
+          }
         }
 
         closeBtn.addEventListener('click', close);
         nextBtn.addEventListener('click', next);
         prevBtn.addEventListener('click', prev);
+        zoomBtn.addEventListener('click', toggleZoom);
+        lbImg.addEventListener('click', toggleZoom);
+        if (fullscreenSupported) fsBtn.addEventListener('click', toggleFullscreen);
+        document.addEventListener('fullscreenchange', () => {
+          if (!lb.classList.contains('open')) return;
+          trackAnalytics('gallery_fullscreen', {
+            state: document.fullscreenElement ? 'enter' : 'exit',
+            gallery: currentGallery,
+            image_src: currentSrc(),
+          });
+        });
         lb.addEventListener('click', (e) => {
-          if (e.target === lb) close();
+          if (e.target === lb) {
+            close();
+            trackAnalytics('gallery_close', { close_method: 'backdrop' });
+          }
         });
         document.addEventListener('keydown', (e) => {
           if (!lb.classList.contains('open')) return;
-          if (e.key === 'Escape') close();
-          if (e.key === 'ArrowRight') next();
-          if (e.key === 'ArrowLeft') prev();
+          if (e.key === 'Escape') {
+            close();
+            trackAnalytics('gallery_close', { close_method: 'escape' });
+          }
+          if (e.key === 'ArrowRight') {
+            next();
+            trackAnalytics('gallery_navigate', { direction: 'next', image_index: currentIndex });
+          }
+          if (e.key === 'ArrowLeft') {
+            prev();
+            trackAnalytics('gallery_navigate', { direction: 'prev', image_index: currentIndex });
+          }
         });
 
         document.querySelectorAll('[data-gallery]').forEach((gallery) => {
+          const galleryName = gallery.dataset.gallery;
           const tiles = Array.from(gallery.querySelectorAll('.tile img'));
           const images = tiles.map((img) => img.src);
           tiles.forEach((img, i) => {
-            img.parentElement.addEventListener('click', () => open(images, i));
+            img.parentElement.addEventListener('click', () => open(images, i, galleryName));
           });
         });
       })();
@@ -3419,7 +3605,12 @@
         if (form) {
           form.addEventListener('submit', function () {
             var sel = form.querySelector('select[name="option"]');
-            track('generate_lead', { apartment: sel ? sel.value : 'unknown' });
+            var ci = form.querySelector('[name="checkin"]');
+            var co = form.querySelector('[name="checkout"]');
+            track('generate_lead', {
+              apartment: sel ? sel.value : 'unknown',
+              has_dates: !!(ci && ci.value && co && co.value),
+            });
           });
         }
 
@@ -3502,7 +3693,7 @@
           var closeBtn = lb.querySelector('.lightbox-close');
           if (closeBtn)
             closeBtn.addEventListener('click', function () {
-              track('gallery_close', {});
+              track('gallery_close', { close_method: 'button' });
             });
         }
 
@@ -3632,6 +3823,73 @@
           a.addEventListener('click', function () {
             track('scroll_to_top', {});
           });
+        });
+      })();
+
+      // ─── ANALYTICS: inquiry-form micro-funnel ──────────
+      // form_field_complete (once per field, on focusout with a value) pinpoints
+      // funnel order; form_abandon on exit when started but not submitted.
+      (function () {
+        var form = document.querySelector('.inquiry-form');
+        if (!form) return;
+        var fieldOrder = ['name', 'email', 'checkin', 'checkout', 'option', 'message'];
+        var started = false;
+        var submitted = false;
+        var done = {};
+        var completedCount = 0;
+        var lastField = '';
+        form.addEventListener(
+          'focusin',
+          function (e) {
+            if (e.target && e.target.name && e.target.type !== 'hidden') started = true;
+          },
+          true
+        );
+        form.addEventListener('focusout', function (e) {
+          var f = e.target;
+          if (!f || !f.name || f.type === 'hidden') return;
+          lastField = f.name;
+          var hasVal = f.value && String(f.value).trim() !== '';
+          if (hasVal && !done[f.name]) {
+            done[f.name] = true;
+            completedCount++;
+            trackAnalytics('form_field_complete', {
+              field_name: f.name,
+              field_index: fieldOrder.indexOf(f.name),
+            });
+          }
+        });
+        form.addEventListener('submit', function () {
+          submitted = true;
+        });
+        window.addEventListener('pagehide', function () {
+          if (started && !submitted) {
+            trackAnalytics('form_abandon', {
+              last_field: lastField,
+              fields_completed: completedCount,
+            });
+          }
+        });
+      })();
+
+      // ─── ANALYTICS: JS error capture (throttled to 3) ──
+      (function () {
+        var count = 0;
+        function report(message, source, lineno) {
+          if (count >= 3) return;
+          count++;
+          trackAnalytics('js_error', {
+            message: String(message || '').slice(0, 150),
+            source: String(source || '').slice(0, 150),
+            lineno: lineno || 0,
+          });
+        }
+        window.addEventListener('error', function (e) {
+          report(e.message, e.filename, e.lineno);
+        });
+        window.addEventListener('unhandledrejection', function (e) {
+          var r = e && e.reason;
+          report(r && r.message ? r.message : r, 'unhandledrejection', 0);
         });
       })();
     </script>
