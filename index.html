@@ -38,7 +38,9 @@
       gtag('js', new Date());
       gtag('config', 'G-VZBYMXVEN5', {
         anonymize_ip: true,
-        send_page_view: true,
+        // page_view is fired manually from the attribution IIFE, AFTER first/last-touch
+        // user_properties are set, so the landing hit carries them.
+        send_page_view: false,
         allow_google_signals: true,
         allow_ad_personalization_signals: true,
       });
@@ -3085,6 +3087,7 @@
         const el = document.getElementById('calendar');
         let calLoadTracked = false;
         let calPrevStart = null;
+        let todayClicked = false;
         calendar = new FullCalendar.Calendar(el, {
           initialView: 'dayGridMonth',
           height: 'auto',
@@ -3125,9 +3128,12 @@
               calLoadTracked = true;
               trackAnalytics('calendar_load', { apartment_view: currentView });
             } else {
+              // Today button is detected by a flag (set below); month-delta alone
+              // can't tell it apart from a prev/next that lands on the current month.
               var dir = 'today';
-              if (calPrevStart && month)
+              if (!todayClicked && calPrevStart && month)
                 dir = month > calPrevStart ? 'next' : month < calPrevStart ? 'prev' : 'today';
+              todayClicked = false;
               trackAnalytics('calendar_nav', {
                 direction: dir,
                 target_month: ym(month),
@@ -3144,6 +3150,15 @@
           },
         });
         calendar.render();
+        // Capture phase so the flag is set before FullCalendar's own handler fires
+        // datesSet, letting calendar_nav label the Today action correctly.
+        el.addEventListener(
+          'click',
+          function (e) {
+            if (e.target.closest && e.target.closest('.fc-today-button')) todayClicked = true;
+          },
+          true
+        );
       }
 
       function buildSources(view) {
@@ -3308,15 +3323,19 @@
           resetZoom();
           document.body.style.overflow = '';
         }
+        // Track here (not in the key/button handlers) so keyboard and on-screen
+        // arrows emit gallery_navigate with the same params, image_index included.
         function next() {
           currentIndex = (currentIndex + 1) % currentImages.length;
           resetZoom();
           lbImg.src = currentImages[currentIndex];
+          trackAnalytics('gallery_navigate', { direction: 'next', image_index: currentIndex });
         }
         function prev() {
           currentIndex = (currentIndex - 1 + currentImages.length) % currentImages.length;
           resetZoom();
           lbImg.src = currentImages[currentIndex];
+          trackAnalytics('gallery_navigate', { direction: 'prev', image_index: currentIndex });
         }
         function toggleZoom() {
           const zoomed = lbImg.classList.toggle('zoomed');
@@ -3340,14 +3359,19 @@
         zoomBtn.addEventListener('click', toggleZoom);
         lbImg.addEventListener('click', toggleZoom);
         if (fullscreenSupported) fsBtn.addEventListener('click', toggleFullscreen);
-        document.addEventListener('fullscreenchange', () => {
+        // Listen to both unprefixed and webkit-prefixed events: WebKit-only browsers
+        // (older/pre-16.4 Safari, WebViews) dispatch webkitfullscreenchange.
+        function onFullscreenChange() {
           if (!lb.classList.contains('open')) return;
           trackAnalytics('gallery_fullscreen', {
-            state: document.fullscreenElement ? 'enter' : 'exit',
+            state:
+              document.fullscreenElement || document.webkitFullscreenElement ? 'enter' : 'exit',
             gallery: currentGallery,
             image_src: currentSrc(),
           });
-        });
+        }
+        document.addEventListener('fullscreenchange', onFullscreenChange);
+        document.addEventListener('webkitfullscreenchange', onFullscreenChange);
         lb.addEventListener('click', (e) => {
           if (e.target === lb) {
             close();
@@ -3360,14 +3384,8 @@
             close();
             trackAnalytics('gallery_close', { close_method: 'escape' });
           }
-          if (e.key === 'ArrowRight') {
-            next();
-            trackAnalytics('gallery_navigate', { direction: 'next', image_index: currentIndex });
-          }
-          if (e.key === 'ArrowLeft') {
-            prev();
-            trackAnalytics('gallery_navigate', { direction: 'prev', image_index: currentIndex });
-          }
+          if (e.key === 'ArrowRight') next();
+          if (e.key === 'ArrowLeft') prev();
         });
 
         document.querySelectorAll('[data-gallery]').forEach((gallery) => {
@@ -3420,7 +3438,7 @@
         var socialSrc =
           /(facebook|fbclid|^fb$|instagram|^ig$|tiktok|linkedin|pinterest|twitter|x\.com|reddit|snapchat|youtube|t\.co)/;
         var searchSrc = /(google|bing|yahoo|duckduckgo|^ddg$|ecosia|baidu|yandex|qwant)/;
-        var paidMedium = /^(.*cp.*|ppc|paid.*|retargeting|display|cpm|banner)$/;
+        var paidMedium = /^(cp[cmv]|ppc|paid.*|retargeting|display|banner)$/;
 
         // GA4-style channel classification.
         function classifyChannel(p, refHost) {
@@ -3512,6 +3530,9 @@
             up_first_campaign: first.campaign,
             up_last_channel: last.channel,
           });
+          // Auto page_view is disabled in the config (send_page_view:false); fire it
+          // here so the landing hit carries the attribution user_properties just set.
+          gtag('event', 'page_view');
         }
 
         // One session_attribution per session.
@@ -3677,19 +3698,10 @@
           });
         });
 
-        // gallery_navigate — prev / next inside lightbox
+        // gallery_close (button). Prev/next navigation is tracked inside the lightbox
+        // IIFE's next()/prev() so keyboard and button paths share image_index.
         var lb = document.getElementById('lightbox');
         if (lb) {
-          var prev = lb.querySelector('.lightbox-prev');
-          var next = lb.querySelector('.lightbox-next');
-          if (prev)
-            prev.addEventListener('click', function () {
-              track('gallery_navigate', { direction: 'prev' });
-            });
-          if (next)
-            next.addEventListener('click', function () {
-              track('gallery_navigate', { direction: 'next' });
-            });
           var closeBtn = lb.querySelector('.lightbox-close');
           if (closeBtn)
             closeBtn.addEventListener('click', function () {
@@ -3754,6 +3766,7 @@
         ];
         var enterTs = {}; // section_id -> timestamp it became visible (null when hidden)
         var dwell = {}; // section_id -> accumulated visible ms not yet emitted
+        var visibleNow = {}; // section_id -> true while currently intersecting
         function accrue(id) {
           if (enterTs[id] == null) return;
           dwell[id] = (dwell[id] || 0) + (now() - enterTs[id]);
@@ -3782,12 +3795,14 @@
               entries.forEach(function (e) {
                 var id = e.target.id;
                 if (e.isIntersecting) {
+                  visibleNow[id] = true;
                   if (!seen[id]) {
                     seen[id] = true;
                     track('section_view', { section_id: id });
                   }
                   if (enterTs[id] == null) enterTs[id] = now();
                 } else {
+                  delete visibleNow[id];
                   emitEngagement(id);
                 }
               });
@@ -3801,7 +3816,8 @@
         }
 
         // page_exit_section — deepest section + scroll % + time on page. Core
-        // dropoff signal. Flushes pending section_engagement first. One-shot.
+        // dropoff signal. Flushes pending section_engagement first. One-shot at the
+        // real exit (pagehide), so time_on_page_msec is not truncated by a tab switch.
         var exitSent = false;
         function onPageExit() {
           if (exitSent) return;
@@ -3814,8 +3830,17 @@
           });
         }
         window.addEventListener('pagehide', onPageExit);
+        // A tab/app switch is not a real exit: flush engagement so it survives a
+        // bfcache discard, but do not latch — re-arm visible sections on return so
+        // dwell keeps accruing and page_exit_section still fires at the true exit.
         document.addEventListener('visibilitychange', function () {
-          if (document.visibilityState === 'hidden') onPageExit();
+          if (document.visibilityState === 'hidden') {
+            sectionIds.forEach(emitEngagement);
+          } else {
+            Object.keys(visibleNow).forEach(function (id) {
+              if (enterTs[id] == null) enterTs[id] = now();
+            });
+          }
         });
 
         // scroll_to_top — anchor clicks to #top
@@ -3862,13 +3887,20 @@
         form.addEventListener('submit', function () {
           submitted = true;
         });
-        window.addEventListener('pagehide', function () {
-          if (started && !submitted) {
-            trackAnalytics('form_abandon', {
-              last_field: lastField,
-              fields_completed: completedCount,
-            });
-          }
+        // Fire on both pagehide and visibilitychange->hidden (mobile rarely fires
+        // pagehide on app/tab switch), one-shot so it cannot double-count.
+        var abandonSent = false;
+        function reportAbandon() {
+          if (abandonSent || !started || submitted) return;
+          abandonSent = true;
+          trackAnalytics('form_abandon', {
+            last_field: lastField,
+            fields_completed: completedCount,
+          });
+        }
+        window.addEventListener('pagehide', reportAbandon);
+        document.addEventListener('visibilitychange', function () {
+          if (document.visibilityState === 'hidden') reportAbandon();
         });
       })();
 
