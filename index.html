@@ -3081,6 +3081,157 @@
 
       document.getElementById('copyright-year').textContent = new Date().getFullYear();
 
+      // ─── ANALYTICS: attribution (first/last touch) ─────
+      // Runs before the custom-events IIFE so user_properties are set on the
+      // first hit. Classifies the traffic channel from utm_*, click IDs and the
+      // referrer (mirroring GA4 precedence), persists first-touch in
+      // localStorage, and emits one session_attribution per session.
+      (function () {
+        function lsGet(key) {
+          try {
+            return localStorage.getItem(key);
+          } catch (e) {
+            return null;
+          }
+        }
+        function lsSet(key, val) {
+          try {
+            localStorage.setItem(key, val);
+          } catch (e) {
+            /* Safari private mode */
+          }
+        }
+        function ssGet(key) {
+          try {
+            return sessionStorage.getItem(key);
+          } catch (e) {
+            return null;
+          }
+        }
+        function ssSet(key, val) {
+          try {
+            sessionStorage.setItem(key, val);
+          } catch (e) {
+            /* Safari private mode */
+          }
+        }
+
+        var socialSrc =
+          /(facebook|fbclid|^fb$|instagram|^ig$|tiktok|linkedin|pinterest|twitter|x\.com|reddit|snapchat|youtube|t\.co)/;
+        var searchSrc = /(google|bing|yahoo|duckduckgo|^ddg$|ecosia|baidu|yandex|qwant)/;
+        var paidMedium = /^(.*cp.*|ppc|paid.*|retargeting|display|cpm|banner)$/;
+
+        // GA4-style channel classification.
+        function classifyChannel(p, refHost) {
+          var src = (p.utm_source || '').toLowerCase();
+          var med = (p.utm_medium || '').toLowerCase();
+          if (p.gclid || p.gbraid || p.wbraid || p.msclkid) return 'paid_search';
+          if (med) {
+            if (med === 'email' || med === 'newsletter') return 'email';
+            if (paidMedium.test(med)) {
+              return med.indexOf('social') >= 0 || socialSrc.test(src)
+                ? 'paid_social'
+                : 'paid_search';
+            }
+            if (med === 'social' || socialSrc.test(src)) return 'organic_social';
+            if (med === 'referral') return 'referral';
+            if (med === 'organic') return 'organic_search';
+          }
+          if (src === 'newsletter') return 'email';
+          // Bare social click ID, no utm_medium → infer organic_social (raw id kept).
+          if (p.fbclid) return 'organic_social';
+          if (refHost) {
+            if (socialSrc.test(refHost)) return 'organic_social';
+            if (searchSrc.test(refHost)) return 'organic_search';
+            return 'referral';
+          }
+          return 'direct';
+        }
+
+        var qs = new URLSearchParams(location.search);
+        var p = {};
+        [
+          'utm_source',
+          'utm_medium',
+          'utm_campaign',
+          'utm_term',
+          'utm_content',
+          'gclid',
+          'gbraid',
+          'wbraid',
+          'fbclid',
+          'msclkid',
+        ].forEach(function (k) {
+          var v = qs.get(k);
+          if (v) p[k] = v;
+        });
+
+        var refHost = '';
+        try {
+          if (document.referrer)
+            refHost = new URL(document.referrer).hostname.replace(/^www\./, '');
+        } catch (e) {
+          /* malformed referrer */
+        }
+        if (refHost === location.hostname) refHost = ''; // same-origin = not a referral
+
+        var channel = classifyChannel(p, refHost);
+        var last = {
+          channel: channel,
+          src: p.utm_source || refHost || '(direct)',
+          medium: p.utm_medium || (channel === 'direct' ? '(none)' : channel),
+          campaign: p.utm_campaign || '(not set)',
+        };
+
+        // First-touch: write once, never overwrite.
+        var first = null;
+        var storedFirst = lsGet('va_attr_first');
+        if (storedFirst) {
+          try {
+            first = JSON.parse(storedFirst);
+          } catch (e) {
+            /* corrupt */
+          }
+        }
+        var isFirstVisit = !first;
+        if (isFirstVisit) {
+          first = {
+            channel: last.channel,
+            src: last.src,
+            medium: last.medium,
+            campaign: last.campaign,
+          };
+          lsSet('va_attr_first', JSON.stringify(first));
+        }
+
+        if (typeof gtag === 'function') {
+          gtag('set', 'user_properties', {
+            up_first_channel: first.channel,
+            up_first_src: first.src,
+            up_first_campaign: first.campaign,
+            up_last_channel: last.channel,
+          });
+        }
+
+        // One session_attribution per session.
+        if (!ssGet('va_attr_sent')) {
+          ssSet('va_attr_sent', '1');
+          trackAnalytics('session_attribution', {
+            channel: last.channel,
+            attr_src: last.src,
+            attr_medium: last.medium,
+            campaign: last.campaign,
+            raw_referrer: refHost,
+            fbclid: p.fbclid || '',
+            gclid: p.gclid || '',
+            msclkid: p.msclkid || '',
+            first_channel: first.channel,
+            first_campaign: first.campaign,
+            is_first_visit: isFirstVisit,
+          });
+        }
+      })();
+
       // ─── ANALYTICS: custom GA4 events ──────────────────
       (function () {
         function track(name, params) {
