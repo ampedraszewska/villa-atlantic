@@ -3354,9 +3354,11 @@
         }
         function toggleFullscreen() {
           if (document.fullscreenElement || document.webkitFullscreenElement) {
-            (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+            (document.exitFullscreen || document.webkitExitFullscreen)
+              .call(document)
+              .catch(function () {});
           } else {
-            (lb.requestFullscreen || lb.webkitRequestFullscreen).call(lb);
+            (lb.requestFullscreen || lb.webkitRequestFullscreen).call(lb).catch(function () {});
           }
         }
 
