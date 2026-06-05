@@ -3155,7 +3155,14 @@
         el.addEventListener(
           'click',
           function (e) {
-            if (e.target.closest && e.target.closest('.fc-today-button')) todayClicked = true;
+            if (e.target.closest && e.target.closest('.fc-today-button')) {
+              todayClicked = true;
+              // A no-op today click (already on current month) won't fire datesSet,
+              // so clear after the current task to stop the flag leaking to next nav.
+              setTimeout(function () {
+                todayClicked = false;
+              }, 0);
+            }
           },
           true
         );
@@ -3529,6 +3536,9 @@
             up_first_src: first.src,
             up_first_campaign: first.campaign,
             up_last_channel: last.channel,
+            up_last_src: last.src,
+            up_last_medium: last.medium,
+            up_last_campaign: last.campaign,
           });
           // Auto page_view is disabled in the config (send_page_view:false); fire it
           // here so the landing hit carries the attribution user_properties just set.
@@ -3547,6 +3557,8 @@
             fbclid: p.fbclid || '',
             gclid: p.gclid || '',
             msclkid: p.msclkid || '',
+            gbraid: p.gbraid || '',
+            wbraid: p.wbraid || '',
             first_channel: first.channel,
             first_campaign: first.campaign,
             is_first_visit: isFirstVisit,
