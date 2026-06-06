@@ -3353,13 +3353,15 @@
           });
         }
         function toggleFullscreen() {
+          // webkit-prefixed fullscreen methods (Safari < 16.4, old WebViews) return
+          // undefined, not a Promise — only attach .catch when a thenable came back.
+          var p;
           if (document.fullscreenElement || document.webkitFullscreenElement) {
-            (document.exitFullscreen || document.webkitExitFullscreen)
-              .call(document)
-              .catch(function () {});
+            p = (document.exitFullscreen || document.webkitExitFullscreen).call(document);
           } else {
-            (lb.requestFullscreen || lb.webkitRequestFullscreen).call(lb).catch(function () {});
+            p = (lb.requestFullscreen || lb.webkitRequestFullscreen).call(lb);
           }
+          if (p && p.catch) p.catch(function () {});
         }
 
         closeBtn.addEventListener('click', close);
@@ -3856,6 +3858,16 @@
             });
           }
         });
+        // bfcache restore (Back/Forward): the page was frozen, not destroyed, so
+        // exitSent is still latched from the pagehide that stored it. Clear it and
+        // re-arm visible sections so engagement + page_exit_section fire again.
+        window.addEventListener('pageshow', function (e) {
+          if (!e.persisted) return;
+          exitSent = false;
+          Object.keys(visibleNow).forEach(function (id) {
+            if (enterTs[id] == null) enterTs[id] = now();
+          });
+        });
 
         // scroll_to_top — anchor clicks to #top
         document.querySelectorAll('a[href="#top"], a[href^="#top"]').forEach(function (a) {
@@ -3875,6 +3887,7 @@
         var started = false;
         var submitted = false;
         var done = {};
+        var interacted = {};
         var completedCount = 0;
         var lastField = '';
         form.addEventListener(
@@ -3884,12 +3897,20 @@
           },
           true
         );
+        // Mark a field as user-touched only on real input/change. The <select> has a
+        // pre-selected first option, so focus-through alone must not count as complete.
+        function markInteracted(e) {
+          if (e.target && e.target.name && e.target.type !== 'hidden')
+            interacted[e.target.name] = true;
+        }
+        form.addEventListener('input', markInteracted, true);
+        form.addEventListener('change', markInteracted, true);
         form.addEventListener('focusout', function (e) {
           var f = e.target;
           if (!f || !f.name || f.type === 'hidden') return;
           lastField = f.name;
           var hasVal = f.value && String(f.value).trim() !== '';
-          if (hasVal && !done[f.name]) {
+          if (hasVal && interacted[f.name] && !done[f.name]) {
             done[f.name] = true;
             completedCount++;
             trackAnalytics('form_field_complete', {
@@ -3901,8 +3922,9 @@
         form.addEventListener('submit', function () {
           submitted = true;
         });
-        // Fire on both pagehide and visibilitychange->hidden (mobile rarely fires
-        // pagehide on app/tab switch), one-shot so it cannot double-count.
+        // Fire only on a real terminal unload (pagehide with persisted=false). A
+        // tab/app switch or bfcache entry is not an abandon — the user may return
+        // and submit, which would otherwise emit a false form_abandon.
         var abandonSent = false;
         function reportAbandon() {
           if (abandonSent || !started || submitted) return;
@@ -3912,9 +3934,8 @@
             fields_completed: completedCount,
           });
         }
-        window.addEventListener('pagehide', reportAbandon);
-        document.addEventListener('visibilitychange', function () {
-          if (document.visibilityState === 'hidden') reportAbandon();
+        window.addEventListener('pagehide', function (e) {
+          if (!e.persisted) reportAbandon();
         });
       })();
 
