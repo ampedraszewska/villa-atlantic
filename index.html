@@ -3595,9 +3595,14 @@
           gtag('event', 'page_view');
         }
 
-        // One session_attribution per session.
+        // One session_attribution per session. Re-read the flag after writing it:
+        // when sessionStorage writes silently no-op (storage disabled, some WebViews,
+        // quota errors) the guard would otherwise stay false and fire on every page
+        // view. Emitting only when the flag actually persisted keeps the once-per-
+        // session invariant — storage-blocked browsers get none instead of one each load.
         if (!ssGet('va_attr_sent')) {
           ssSet('va_attr_sent', '1');
+          if (ssGet('va_attr_sent') !== '1') return;
           trackAnalytics('session_attribution', {
             channel: last.channel,
             attr_src: last.src,
