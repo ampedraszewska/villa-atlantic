@@ -2,3 +2,4 @@ images/originals/
 .DS_Store
 .gstack/
 __pycache__/
+.claude/

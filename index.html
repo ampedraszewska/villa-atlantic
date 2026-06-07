@@ -38,10 +38,71 @@
       gtag('js', new Date());
       gtag('config', 'G-VZBYMXVEN5', {
         anonymize_ip: true,
-        send_page_view: true,
+        // page_view is fired manually from the attribution IIFE, AFTER first/last-touch
+        // user_properties are set, so the landing hit carries them.
+        send_page_view: false,
         allow_google_signals: true,
         allow_ad_personalization_signals: true,
       });
+    </script>
+
+    <!-- PostHog (Cloud EU) — heatmaps + session replay. LIVE: a project key is set
+         below, so init runs and loads array.js on every page view. To disable, set
+         the key to an __-prefixed placeholder (the guard below then skips init). -->
+    <script>
+      !(function (t, e) {
+        var o, n, p, r;
+        e.__SV ||
+          ((window.posthog = e),
+          (e._i = []),
+          (e.init = function (i, s, a) {
+            function g(t, e) {
+              var o = e.split('.');
+              (2 == o.length && ((t = t[o[0]]), (e = o[1])),
+                (t[e] = function () {
+                  t.push([e].concat(Array.prototype.slice.call(arguments, 0)));
+                }));
+            }
+            (((p = t.createElement('script')).type = 'text/javascript'),
+              (p.crossOrigin = 'anonymous'),
+              (p.async = !0),
+              (p.src =
+                s.api_host.replace('.i.posthog.com', '-assets.i.posthog.com') + '/static/array.js'),
+              (r = t.getElementsByTagName('script')[0]).parentNode.insertBefore(p, r));
+            var u = e;
+            for (
+              void 0 !== a ? (u = e[a] = []) : (a = 'posthog'),
+                u.people = u.people || [],
+                u.toString = function (t) {
+                  var e = 'posthog';
+                  return ('posthog' !== a && (e += '.' + a), t || (e += ' (stub)'), e);
+                },
+                u.people.toString = function () {
+                  return u.toString(1) + '.people (stub)';
+                },
+                o =
+                  'init capture register register_once register_for_session unregister unregister_for_session getFeatureFlag getFeatureFlagPayload isFeatureEnabled reloadFeatureFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSessionId getSurveys getActiveMatchingSurveys renderSurvey canRenderSurvey getNextSurveyStep identify setPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset get_distinct_id getGroups get_session_id get_session_replay_url alias set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException loadToolbar get_property getSessionProperty createPersonProfile opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing clear_opt_in_out_capturing debug getPageViewId captureTraceFeedback captureTraceMetric'.split(
+                    ' '
+                  ),
+                n = 0;
+              n < o.length;
+              n++
+            )
+              g(u, o[n]);
+            e._i.push([i, s, a]);
+          }),
+          (e.__SV = 1));
+      })(document, window.posthog || []);
+
+      // PostHog Cloud EU project key (live). Set to an __-prefixed placeholder to disable.
+      var POSTHOG_KEY = 'phc_mQGMUxo6aFQgwvpszXNsq2SGVZHFYkxWc8HrJMHSwjFc';
+      if (POSTHOG_KEY.indexOf('__') !== 0) {
+        posthog.init(POSTHOG_KEY, {
+          api_host: 'https://eu.i.posthog.com', // EU/Frankfurt residency
+          enable_heatmaps: true, // scrollmaps/clickmaps = "which section is interesting"
+          persistence: 'memory', // no cookies/localStorage; keeps heatmaps + replay working
+        });
+      }
     </script>
 
     <title>Villa Atlantic — Oceanfront holiday villa in Puerto de Santiago, Tenerife</title>
@@ -1343,6 +1404,35 @@
       .lightbox-close:hover {
         background: rgba(255, 255, 255, 0.1);
       }
+      .lightbox-tool {
+        position: absolute;
+        top: 20px;
+        background: none;
+        border: none;
+        color: white;
+        font-size: 1.5rem;
+        cursor: pointer;
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+      }
+      .lightbox-tool:hover {
+        background: rgba(255, 255, 255, 0.1);
+      }
+      .lightbox-zoom {
+        right: 124px;
+      }
+      .lightbox-fullscreen {
+        right: 74px;
+      }
+      .lightbox img {
+        cursor: zoom-in;
+        transition: transform 0.2s ease;
+      }
+      .lightbox img.zoomed {
+        transform: scale(1.8);
+        cursor: zoom-out;
+      }
       .lightbox-nav {
         position: absolute;
         top: 50%;
@@ -1371,21 +1461,52 @@
     <!-- NAV -->
     <nav class="nav">
       <div class="nav-inner">
-        <a href="#top" class="brand">Villa Atlantic</a>
+        <a href="#top" class="brand" data-track="nav" data-track-id="brand">Villa Atlantic</a>
         <div class="nav-links">
-          <a href="#apartments" data-lang="en">Apartments</a
-          ><a href="#apartments" data-lang="pl">Apartamenty</a>
-          <a href="#location" data-lang="en">Location</a
-          ><a href="#location" data-lang="pl">Lokalizacja</a>
-          <a href="#pricing" data-lang="en">Pricing</a><a href="#pricing" data-lang="pl">Ceny</a>
-          <a href="#calendar-section" data-lang="en">Availability</a
-          ><a href="#calendar-section" data-lang="pl">Dostępność</a>
+          <a href="#apartments" data-track="nav" data-track-id="nav-apartments" data-lang="en"
+            >Apartments</a
+          ><a href="#apartments" data-track="nav" data-track-id="nav-apartments" data-lang="pl"
+            >Apartamenty</a
+          >
+          <a href="#location" data-track="nav" data-track-id="nav-location" data-lang="en"
+            >Location</a
+          ><a href="#location" data-track="nav" data-track-id="nav-location" data-lang="pl"
+            >Lokalizacja</a
+          >
+          <a href="#pricing" data-track="nav" data-track-id="nav-pricing" data-lang="en">Pricing</a
+          ><a href="#pricing" data-track="nav" data-track-id="nav-pricing" data-lang="pl">Ceny</a>
+          <a
+            href="#calendar-section"
+            data-track="nav"
+            data-track-id="nav-availability"
+            data-lang="en"
+            >Availability</a
+          ><a
+            href="#calendar-section"
+            data-track="nav"
+            data-track-id="nav-availability"
+            data-lang="pl"
+            >Dostępność</a
+          >
           <div class="lang-switch">
             <button type="button" data-set-lang="pl">PL</button>
             <button type="button" data-set-lang="en">EN</button>
           </div>
-          <a href="#contact" class="nav-cta" data-lang="en">Book now</a
-          ><a href="#contact" class="nav-cta" data-lang="pl">Rezerwuj</a>
+          <a
+            href="#contact"
+            class="nav-cta"
+            data-track="cta"
+            data-track-id="nav-book"
+            data-lang="en"
+            >Book now</a
+          ><a
+            href="#contact"
+            class="nav-cta"
+            data-track="cta"
+            data-track-id="nav-book"
+            data-lang="pl"
+            >Rezerwuj</a
+          >
         </div>
       </div>
     </nav>
@@ -1404,8 +1525,22 @@
         <source src="videos/hero-mobile.mp4" type="video/mp4" />
       </video>
       <div class="hero-content">
-        <a href="#remote-work" class="hero-badge" data-lang="en">🌐 1 Gb/s · Remote-work ready</a>
-        <a href="#remote-work" class="hero-badge" data-lang="pl">🌐 1 Gb/s · Praca zdalna</a>
+        <a
+          href="#remote-work"
+          class="hero-badge"
+          data-track="cta"
+          data-track-id="hero-badge"
+          data-lang="en"
+          >🌐 1 Gb/s · Remote-work ready</a
+        >
+        <a
+          href="#remote-work"
+          class="hero-badge"
+          data-track="cta"
+          data-track-id="hero-badge"
+          data-lang="pl"
+          >🌐 1 Gb/s · Praca zdalna</a
+        >
         <div class="hero-tag" data-lang="en">Puerto de Santiago · Tenerife</div>
         <div class="hero-tag" data-lang="pl">Puerto de Santiago · Teneryfa</div>
         <h1 data-lang="en">Your oceanfront home in the south of Tenerife</h1>
@@ -1419,10 +1554,38 @@
           cały dom, górny apartament (Cliffs) albo dolny (Gardens).
         </p>
         <div class="hero-ctas">
-          <a href="#calendar-section" class="btn btn-primary" data-lang="en">Check availability</a>
-          <a href="#calendar-section" class="btn btn-primary" data-lang="pl">Sprawdź dostępność</a>
-          <a href="#apartments" class="btn btn-secondary" data-lang="en">See apartments</a>
-          <a href="#apartments" class="btn btn-secondary" data-lang="pl">Zobacz apartamenty</a>
+          <a
+            href="#calendar-section"
+            class="btn btn-primary"
+            data-track="cta"
+            data-track-id="hero-check-availability"
+            data-lang="en"
+            >Check availability</a
+          >
+          <a
+            href="#calendar-section"
+            class="btn btn-primary"
+            data-track="cta"
+            data-track-id="hero-check-availability"
+            data-lang="pl"
+            >Sprawdź dostępność</a
+          >
+          <a
+            href="#apartments"
+            class="btn btn-secondary"
+            data-track="cta"
+            data-track-id="hero-see-apartments"
+            data-lang="en"
+            >See apartments</a
+          >
+          <a
+            href="#apartments"
+            class="btn btn-secondary"
+            data-track="cta"
+            data-track-id="hero-see-apartments"
+            data-lang="pl"
+            >Zobacz apartamenty</a
+          >
         </div>
       </div>
     </header>
@@ -1472,8 +1635,22 @@
                 <li>Prywatny basen + taras + ogród</li>
                 <li>5 sypialni + 2 kuchnie</li>
               </ul>
-              <a href="#pricing" class="btn btn-ocean" data-lang="en">View details</a>
-              <a href="#pricing" class="btn btn-ocean" data-lang="pl">Szczegóły</a>
+              <a
+                href="#pricing"
+                class="btn btn-ocean"
+                data-track="cta"
+                data-track-id="option-whole"
+                data-lang="en"
+                >View details</a
+              >
+              <a
+                href="#pricing"
+                class="btn btn-ocean"
+                data-track="cta"
+                data-track-id="option-whole"
+                data-lang="pl"
+                >Szczegóły</a
+              >
             </div>
           </div>
 
@@ -1502,8 +1679,22 @@
                 <li>Taras z widokiem na ocean</li>
                 <li>Salon i oddzielna kuchnia ze stołem jadalnym</li>
               </ul>
-              <a href="#apt-cliffs" class="btn btn-ocean" data-lang="en">View details</a>
-              <a href="#apt-cliffs" class="btn btn-ocean" data-lang="pl">Szczegóły</a>
+              <a
+                href="#apt-cliffs"
+                class="btn btn-ocean"
+                data-track="cta"
+                data-track-id="option-cliffs"
+                data-lang="en"
+                >View details</a
+              >
+              <a
+                href="#apt-cliffs"
+                class="btn btn-ocean"
+                data-track="cta"
+                data-track-id="option-cliffs"
+                data-lang="pl"
+                >Szczegóły</a
+              >
             </div>
           </div>
 
@@ -1532,8 +1723,22 @@
                 <li>Prywatny ogród, bezpośredni dostęp do basenu</li>
                 <li>Salon z otwartą kuchnią</li>
               </ul>
-              <a href="#apt-gardens" class="btn btn-ocean" data-lang="en">View details</a>
-              <a href="#apt-gardens" class="btn btn-ocean" data-lang="pl">Szczegóły</a>
+              <a
+                href="#apt-gardens"
+                class="btn btn-ocean"
+                data-track="cta"
+                data-track-id="option-gardens"
+                data-lang="en"
+                >View details</a
+              >
+              <a
+                href="#apt-gardens"
+                class="btn btn-ocean"
+                data-track="cta"
+                data-track-id="option-gardens"
+                data-lang="pl"
+                >Szczegóły</a
+              >
             </div>
           </div>
         </div>
@@ -2692,6 +2897,8 @@
     <!-- LIGHTBOX -->
     <div class="lightbox" id="lightbox">
       <button class="lightbox-close" aria-label="Close">✕</button>
+      <button class="lightbox-tool lightbox-zoom" aria-label="Zoom">⤢</button>
+      <button class="lightbox-tool lightbox-fullscreen" aria-label="Fullscreen" hidden>⛶</button>
       <button class="lightbox-nav lightbox-prev" aria-label="Previous">‹</button>
       <img loading="lazy" decoding="async" src="" alt="" />
       <button class="lightbox-nav lightbox-next" aria-label="Next">›</button>
@@ -2879,6 +3086,9 @@
 
       function initCalendar() {
         const el = document.getElementById('calendar');
+        let calLoadTracked = false;
+        let calPrevStart = null;
+        let todayClicked = false;
         calendar = new FullCalendar.Calendar(el, {
           initialView: 'dayGridMonth',
           height: 'auto',
@@ -2904,6 +3114,35 @@
               apartment_view: currentView,
             });
           },
+          // Fires on first render and on every prev/next/today nav. First =
+          // calendar_load; later = calendar_nav (how far ahead people look).
+          datesSet: function (info) {
+            // currentStart = first of the displayed month (info.start includes
+            // prev-month overflow days, which mislabels the target month). Read
+            // local Y-M, not toISOString — UTC conversion shifts a local-midnight
+            // first-of-month back to the previous month in zones ahead of UTC.
+            var month = info.view && info.view.currentStart;
+            function ym(d) {
+              return d ? d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') : '';
+            }
+            if (!calLoadTracked) {
+              calLoadTracked = true;
+              trackAnalytics('calendar_load', { apartment_view: currentView });
+            } else {
+              // Today button is detected by a flag (set below); month-delta alone
+              // can't tell it apart from a prev/next that lands on the current month.
+              var dir = 'today';
+              if (!todayClicked && calPrevStart && month)
+                dir = month > calPrevStart ? 'next' : month < calPrevStart ? 'prev' : 'today';
+              todayClicked = false;
+              trackAnalytics('calendar_nav', {
+                direction: dir,
+                target_month: ym(month),
+                apartment_view: currentView,
+              });
+            }
+            calPrevStart = month;
+          },
           // Fires whenever the event set changes (async iCal loads, month change,
           // tab switch). We need to strip the price overlay from newly-booked cells
           // and restore it on cells that were booked before but no longer are.
@@ -2912,6 +3151,22 @@
           },
         });
         calendar.render();
+        // Capture phase so the flag is set before FullCalendar's own handler fires
+        // datesSet, letting calendar_nav label the Today action correctly.
+        el.addEventListener(
+          'click',
+          function (e) {
+            if (e.target.closest && e.target.closest('.fc-today-button')) {
+              todayClicked = true;
+              // A no-op today click (already on current month) won't fire datesSet,
+              // so clear after the current task to stop the flag leaking to next nav.
+              setTimeout(function () {
+                todayClicked = false;
+              }, 0);
+            }
+          },
+          true
+        );
       }
 
       function buildSources(view) {
@@ -2973,7 +3228,14 @@
       function setupCalendarLazyLoad() {
         const section = document.getElementById('calendar-section');
         if (!section) return;
-        const trigger = () => loadFullCalendar().then(initCalendar);
+        const trigger = () =>
+          loadFullCalendar()
+            .then(initCalendar)
+            .catch((err) =>
+              trackAnalytics('calendar_load_error', {
+                resource: String((err && err.message) || err || 'unknown').slice(0, 150),
+              })
+            );
 
         // If user deep-links to #calendar-section, load immediately
         if (window.location.hash === '#calendar-section') {
@@ -3034,52 +3296,330 @@
         const closeBtn = lb.querySelector('.lightbox-close');
         const prevBtn = lb.querySelector('.lightbox-prev');
         const nextBtn = lb.querySelector('.lightbox-next');
+        const zoomBtn = lb.querySelector('.lightbox-zoom');
+        const fsBtn = lb.querySelector('.lightbox-fullscreen');
         let currentImages = [];
         let currentIndex = 0;
+        let currentGallery = '';
 
-        function open(images, index) {
+        // Fullscreen API is unsupported on iOS Safari (no <element>.requestFullscreen
+        // for non-video) — only expose the button where it actually works.
+        const fullscreenSupported = !!(
+          lb.requestFullscreen ||
+          lb.webkitRequestFullscreen ||
+          document.fullscreenEnabled
+        );
+        if (fullscreenSupported) fsBtn.hidden = false;
+
+        function currentSrc() {
+          return currentImages[currentIndex] || '';
+        }
+        function resetZoom() {
+          lbImg.classList.remove('zoomed');
+        }
+        function open(images, index, galleryName) {
           currentImages = images;
           currentIndex = index;
+          currentGallery = galleryName || '';
+          resetZoom();
           lbImg.src = images[index];
           lb.classList.add('open');
           document.body.style.overflow = 'hidden';
         }
         function close() {
+          // Unwind browser fullscreen on every close path (✕, backdrop, Escape) —
+          // removing .open only sets display:none, which does NOT disconnect lb from
+          // the DOM, so without this the page stays in fullscreen on an empty element.
+          if (document.fullscreenElement || document.webkitFullscreenElement) {
+            var p = (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+            if (p && p.catch) p.catch(function () {});
+          }
           lb.classList.remove('open');
+          resetZoom();
           document.body.style.overflow = '';
         }
+        // Track here (not in the key/button handlers) so keyboard and on-screen
+        // arrows emit gallery_navigate with the same params, image_index included.
         function next() {
           currentIndex = (currentIndex + 1) % currentImages.length;
+          resetZoom();
           lbImg.src = currentImages[currentIndex];
+          trackAnalytics('gallery_navigate', { direction: 'next', image_index: currentIndex });
         }
         function prev() {
           currentIndex = (currentIndex - 1 + currentImages.length) % currentImages.length;
+          resetZoom();
           lbImg.src = currentImages[currentIndex];
+          trackAnalytics('gallery_navigate', { direction: 'prev', image_index: currentIndex });
+        }
+        function toggleZoom() {
+          const zoomed = lbImg.classList.toggle('zoomed');
+          trackAnalytics('gallery_zoom', {
+            zoom_state: zoomed ? 'in' : 'out',
+            gallery: currentGallery,
+            image_src: currentSrc(),
+          });
+        }
+        function toggleFullscreen() {
+          // webkit-prefixed fullscreen methods (Safari < 16.4, old WebViews) return
+          // undefined, not a Promise — only attach .catch when a thenable came back.
+          var p;
+          if (document.fullscreenElement || document.webkitFullscreenElement) {
+            p = (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+          } else {
+            p = (lb.requestFullscreen || lb.webkitRequestFullscreen).call(lb);
+          }
+          if (p && p.catch) p.catch(function () {});
         }
 
         closeBtn.addEventListener('click', close);
         nextBtn.addEventListener('click', next);
         prevBtn.addEventListener('click', prev);
+        zoomBtn.addEventListener('click', toggleZoom);
+        lbImg.addEventListener('click', toggleZoom);
+        if (fullscreenSupported) fsBtn.addEventListener('click', toggleFullscreen);
+        // Listen to both unprefixed and webkit-prefixed events: WebKit-only browsers
+        // (older/pre-16.4 Safari, WebViews) dispatch webkitfullscreenchange.
+        function onFullscreenChange() {
+          var inFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+          // close() strips .open synchronously, but fullscreenchange fires async after,
+          // so still report a pending exit when closed; only ignore stray enters.
+          if (!lb.classList.contains('open') && inFs) return;
+          trackAnalytics('gallery_fullscreen', {
+            state: inFs ? 'enter' : 'exit',
+            gallery: currentGallery,
+            image_src: currentSrc(),
+          });
+        }
+        document.addEventListener('fullscreenchange', onFullscreenChange);
+        document.addEventListener('webkitfullscreenchange', onFullscreenChange);
         lb.addEventListener('click', (e) => {
-          if (e.target === lb) close();
+          if (e.target === lb) {
+            close();
+            trackAnalytics('gallery_close', { close_method: 'backdrop' });
+          }
         });
         document.addEventListener('keydown', (e) => {
           if (!lb.classList.contains('open')) return;
-          if (e.key === 'Escape') close();
+          if (e.key === 'Escape') {
+            close();
+            trackAnalytics('gallery_close', { close_method: 'escape' });
+          }
           if (e.key === 'ArrowRight') next();
           if (e.key === 'ArrowLeft') prev();
         });
 
         document.querySelectorAll('[data-gallery]').forEach((gallery) => {
+          const galleryName = gallery.dataset.gallery;
           const tiles = Array.from(gallery.querySelectorAll('.tile img'));
           const images = tiles.map((img) => img.src);
           tiles.forEach((img, i) => {
-            img.parentElement.addEventListener('click', () => open(images, i));
+            img.parentElement.addEventListener('click', () => open(images, i, galleryName));
           });
         });
       })();
 
       document.getElementById('copyright-year').textContent = new Date().getFullYear();
+
+      // ─── ANALYTICS: attribution (first/last touch) ─────
+      // Runs before the custom-events IIFE so user_properties are set on the
+      // first hit. Classifies the traffic channel from utm_*, click IDs and the
+      // referrer (mirroring GA4 precedence), persists first-touch in
+      // localStorage, and emits one session_attribution per session.
+      (function () {
+        function lsGet(key) {
+          try {
+            return localStorage.getItem(key);
+          } catch (e) {
+            return null;
+          }
+        }
+        function lsSet(key, val) {
+          try {
+            localStorage.setItem(key, val);
+          } catch (e) {
+            /* Safari private mode */
+          }
+        }
+        function ssGet(key) {
+          try {
+            return sessionStorage.getItem(key);
+          } catch (e) {
+            return null;
+          }
+        }
+        function ssSet(key, val) {
+          try {
+            sessionStorage.setItem(key, val);
+          } catch (e) {
+            /* Safari private mode */
+          }
+        }
+
+        var socialSrc =
+          /(facebook|fbclid|^fb$|instagram|^ig$|tiktok|linkedin|pinterest|twitter|x\.com|reddit|snapchat|youtube|t\.co)/;
+        var searchSrc = /(google|bing|yahoo|duckduckgo|^ddg$|ecosia|baidu|yandex|qwant)/;
+        var paidMedium = /^(cp[cmv]|ppc|paid.*|retargeting|display|banner)$/;
+
+        // GA4-style channel classification.
+        function classifyChannel(p, refHost) {
+          var src = (p.utm_source || '').toLowerCase();
+          var med = (p.utm_medium || '').toLowerCase();
+          if (p.gclid || p.gbraid || p.wbraid || p.msclkid) return 'paid_search';
+          if (med) {
+            if (med === 'email' || med === 'newsletter') return 'email';
+            if (paidMedium.test(med)) {
+              return med.indexOf('social') >= 0 || socialSrc.test(src)
+                ? 'paid_social'
+                : 'paid_search';
+            }
+            if (med === 'social' || socialSrc.test(src)) return 'organic_social';
+            if (med === 'referral') return 'referral';
+            if (med === 'organic') return 'organic_search';
+          }
+          if (src === 'newsletter') return 'email';
+          // Bare social click ID, no utm_medium → infer organic_social (raw id kept).
+          if (p.fbclid) return 'organic_social';
+          if (refHost) {
+            if (socialSrc.test(refHost)) return 'organic_social';
+            if (searchSrc.test(refHost)) return 'organic_search';
+            return 'referral';
+          }
+          return 'direct';
+        }
+
+        var qs = new URLSearchParams(location.search);
+        var p = {};
+        [
+          'utm_source',
+          'utm_medium',
+          'utm_campaign',
+          'utm_term',
+          'utm_content',
+          'gclid',
+          'gbraid',
+          'wbraid',
+          'fbclid',
+          'msclkid',
+        ].forEach(function (k) {
+          var v = qs.get(k);
+          if (v) p[k] = v;
+        });
+
+        var refHost = '';
+        try {
+          if (document.referrer)
+            refHost = new URL(document.referrer).hostname.replace(/^www\./, '');
+        } catch (e) {
+          /* malformed referrer */
+        }
+        // same-origin, or our own form processor's post-submit redirect, is not a
+        // referral — otherwise every converting lead's last-touch would be clobbered
+        // by the formsubmit.co ?sent=1 round-trip.
+        if (refHost === location.hostname || refHost === 'formsubmit.co') refHost = '';
+
+        var channel = classifyChannel(p, refHost);
+        // This load carries a real acquisition signal only if it has utm/click-id
+        // params or an external referrer. Plain reloads and internal returns have
+        // none, and must NOT overwrite the stored last-touch with direct.
+        var hasSignal = !!(
+          p.utm_source ||
+          p.utm_medium ||
+          p.gclid ||
+          p.gbraid ||
+          p.wbraid ||
+          p.fbclid ||
+          p.msclkid ||
+          refHost
+        );
+        var touch = {
+          channel: channel,
+          src: p.utm_source || refHost || '(direct)',
+          medium: p.utm_medium || (channel === 'direct' ? '(none)' : channel),
+          campaign: p.utm_campaign || '(not set)',
+        };
+
+        // First-touch: write once, never overwrite.
+        var first = null;
+        var storedFirst = lsGet('va_attr_first');
+        if (storedFirst) {
+          try {
+            first = JSON.parse(storedFirst);
+          } catch (e) {
+            /* corrupt */
+          }
+        }
+        var isFirstVisit = !first;
+        if (isFirstVisit) {
+          first = {
+            channel: touch.channel,
+            src: touch.src,
+            medium: touch.medium,
+            campaign: touch.campaign,
+          };
+          lsSet('va_attr_first', JSON.stringify(first));
+        }
+
+        // Last-touch: update only when this load brings a new signal; otherwise keep
+        // the previously stored last-touch so internal returns (e.g. the formsubmit.co
+        // ?sent=1 redirect, or a plain reload) don't reset it to direct/self-referral.
+        // A genuine new channel mid-/cross-session still updates it.
+        var last = null;
+        if (hasSignal) {
+          last = touch;
+          lsSet('va_attr_last', JSON.stringify(touch));
+        } else {
+          var storedLast = lsGet('va_attr_last');
+          if (storedLast) {
+            try {
+              last = JSON.parse(storedLast);
+            } catch (e) {
+              /* corrupt */
+            }
+          }
+          if (!last) last = first || touch;
+        }
+
+        if (typeof gtag === 'function') {
+          gtag('set', 'user_properties', {
+            up_first_channel: first.channel,
+            up_first_src: first.src,
+            up_first_campaign: first.campaign,
+            up_last_channel: last.channel,
+            up_last_src: last.src,
+            up_last_medium: last.medium,
+            up_last_campaign: last.campaign,
+          });
+          // Auto page_view is disabled in the config (send_page_view:false); fire it
+          // here so the landing hit carries the attribution user_properties just set.
+          gtag('event', 'page_view');
+        }
+
+        // One session_attribution per session. Re-read the flag after writing it:
+        // when sessionStorage writes silently no-op (storage disabled, some WebViews,
+        // quota errors) the guard would otherwise stay false and fire on every page
+        // view. Emitting only when the flag actually persisted keeps the once-per-
+        // session invariant — storage-blocked browsers get none instead of one each load.
+        if (!ssGet('va_attr_sent')) {
+          ssSet('va_attr_sent', '1');
+          if (ssGet('va_attr_sent') !== '1') return;
+          trackAnalytics('session_attribution', {
+            channel: last.channel,
+            attr_src: last.src,
+            attr_medium: last.medium,
+            campaign: last.campaign,
+            raw_referrer: refHost,
+            fbclid: p.fbclid || '',
+            gclid: p.gclid || '',
+            msclkid: p.msclkid || '',
+            gbraid: p.gbraid || '',
+            wbraid: p.wbraid || '',
+            first_channel: first.channel,
+            first_campaign: first.campaign,
+            is_first_visit: isFirstVisit,
+          });
+        }
+      })();
 
       // ─── ANALYTICS: custom GA4 events ──────────────────
       (function () {
@@ -3087,12 +3627,78 @@
           trackAnalytics(name, params);
         }
 
+        function now() {
+          return window.performance && performance.now ? performance.now() : Date.now();
+        }
+        var pageStart = now();
+        var maxScrollPercent = 0;
+
+        // cta_click / nav_click — ONE delegated capture-phase listener. New CTAs
+        // are tracked by adding data-track="cta|nav" + data-track-id in the HTML,
+        // no JS edit required.
+        document.addEventListener(
+          'click',
+          function (e) {
+            var el = e.target.closest && e.target.closest('[data-track]');
+            if (!el) return;
+            var cat = el.getAttribute('data-track');
+            var id = el.getAttribute('data-track-id') || '';
+            var text = (el.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 60);
+            var dest = el.getAttribute('href') || '';
+            if (cat === 'nav') {
+              track('nav_click', { nav_id: id, nav_text: text, destination: dest });
+            } else {
+              var sec = el.closest('section, header, nav, footer');
+              track('cta_click', {
+                cta_id: id,
+                cta_text: text,
+                cta_location: (sec && sec.id) || '',
+                destination: dest,
+              });
+            }
+          },
+          true
+        );
+
+        // scroll_depth — 25/50/75 once each (90% left to Enhanced Measurement);
+        // also tracks maxScrollPercent for section_engagement + page_exit_section.
+        var scrollHit = {};
+        var scrollTicking = false;
+        function computeScroll() {
+          scrollTicking = false;
+          var doc = document.documentElement;
+          var scrollable = doc.scrollHeight - window.innerHeight;
+          var pct = scrollable > 0 ? Math.round((window.scrollY / scrollable) * 100) : 0;
+          if (pct > maxScrollPercent) maxScrollPercent = pct;
+          [25, 50, 75].forEach(function (m) {
+            if (pct >= m && !scrollHit[m]) {
+              scrollHit[m] = true;
+              track('scroll_depth', { percent: m });
+            }
+          });
+        }
+        window.addEventListener(
+          'scroll',
+          function () {
+            if (!scrollTicking) {
+              scrollTicking = true;
+              requestAnimationFrame(computeScroll);
+            }
+          },
+          { passive: true }
+        );
+
         // generate_lead — inquiry form submit
         var form = document.querySelector('.inquiry-form');
         if (form) {
           form.addEventListener('submit', function () {
             var sel = form.querySelector('select[name="option"]');
-            track('generate_lead', { apartment: sel ? sel.value : 'unknown' });
+            var ci = form.querySelector('[name="checkin"]');
+            var co = form.querySelector('[name="checkout"]');
+            track('generate_lead', {
+              apartment: sel ? sel.value : 'unknown',
+              has_dates: !!(ci && ci.value && co && co.value),
+            });
           });
         }
 
@@ -3159,23 +3765,14 @@
           });
         });
 
-        // gallery_navigate — prev / next inside lightbox
+        // gallery_close (button). Prev/next navigation is tracked inside the lightbox
+        // IIFE's next()/prev() so keyboard and button paths share image_index.
         var lb = document.getElementById('lightbox');
         if (lb) {
-          var prev = lb.querySelector('.lightbox-prev');
-          var next = lb.querySelector('.lightbox-next');
-          if (prev)
-            prev.addEventListener('click', function () {
-              track('gallery_navigate', { direction: 'prev' });
-            });
-          if (next)
-            next.addEventListener('click', function () {
-              track('gallery_navigate', { direction: 'next' });
-            });
           var closeBtn = lb.querySelector('.lightbox-close');
           if (closeBtn)
             closeBtn.addEventListener('click', function () {
-              track('gallery_close', {});
+              track('gallery_close', { close_method: 'button' });
             });
         }
 
@@ -3216,32 +3813,65 @@
           });
         }
 
-        // section_view — IntersectionObserver, once per section per page view
+        // section_view (entered, once) + section_engagement (accumulated visible
+        // ms, emitted on exit). Stateful IntersectionObserver — the core "which
+        // section is interesting" signal.
+        var seen = {};
+        var sectionIds = [
+          'options',
+          'about',
+          'apartments',
+          'apt-cliffs',
+          'apt-gardens',
+          'remote-work',
+          'location',
+          'gallery',
+          'pricing',
+          'calendar-section',
+          'reviews',
+          'contact',
+        ];
+        var enterTs = {}; // section_id -> timestamp it became visible (null when hidden)
+        var dwell = {}; // section_id -> accumulated visible ms not yet emitted
+        var visibleNow = {}; // section_id -> true while currently intersecting
+        function accrue(id) {
+          if (enterTs[id] == null) return;
+          dwell[id] = (dwell[id] || 0) + (now() - enterTs[id]);
+          enterTs[id] = null;
+        }
+        function emitEngagement(id) {
+          accrue(id);
+          if (!dwell[id]) return;
+          track('section_engagement', {
+            section_id: id,
+            engagement_msec: Math.round(dwell[id]),
+            max_scroll_reached: maxScrollPercent,
+          });
+          dwell[id] = 0;
+        }
+        function lastSeenSection() {
+          var last = '';
+          sectionIds.forEach(function (id) {
+            if (seen[id]) last = id;
+          });
+          return last;
+        }
         if ('IntersectionObserver' in window) {
-          var seen = {};
-          var sectionIds = [
-            'options',
-            'about',
-            'apartments',
-            'apt-cliffs',
-            'apt-gardens',
-            'remote-work',
-            'location',
-            'gallery',
-            'pricing',
-            'calendar-section',
-            'reviews',
-            'contact',
-          ];
           var io = new IntersectionObserver(
             function (entries) {
               entries.forEach(function (e) {
-                if (!e.isIntersecting) return;
                 var id = e.target.id;
-                if (seen[id]) return;
-                seen[id] = true;
-                track('section_view', { section_id: id });
-                io.unobserve(e.target);
+                if (e.isIntersecting) {
+                  visibleNow[id] = true;
+                  if (!seen[id]) {
+                    seen[id] = true;
+                    track('section_view', { section_id: id });
+                  }
+                  if (enterTs[id] == null) enterTs[id] = now();
+                } else {
+                  delete visibleNow[id];
+                  emitEngagement(id);
+                }
               });
             },
             { rootMargin: '0px 0px -40% 0px', threshold: 0 }
@@ -3252,11 +3882,136 @@
           });
         }
 
+        // page_exit_section — deepest section + scroll % + time on page. Core
+        // dropoff signal. Flushes pending section_engagement first. One-shot at the
+        // real exit (pagehide), so time_on_page_msec is not truncated by a tab switch.
+        var exitSent = false;
+        function onPageExit() {
+          if (exitSent) return;
+          exitSent = true;
+          sectionIds.forEach(emitEngagement);
+          track('page_exit_section', {
+            last_section_id: lastSeenSection(),
+            max_scroll_percent: maxScrollPercent,
+            time_on_page_msec: Math.round(now() - pageStart),
+          });
+        }
+        window.addEventListener('pagehide', onPageExit);
+        // A tab/app switch is not a real exit: flush engagement so it survives a
+        // bfcache discard, but do not latch — re-arm visible sections on return so
+        // dwell keeps accruing and page_exit_section still fires at the true exit.
+        document.addEventListener('visibilitychange', function () {
+          if (document.visibilityState === 'hidden') {
+            sectionIds.forEach(emitEngagement);
+          } else {
+            Object.keys(visibleNow).forEach(function (id) {
+              if (enterTs[id] == null) enterTs[id] = now();
+            });
+          }
+        });
+        // bfcache restore (Back/Forward): the page was frozen, not destroyed, so
+        // exitSent is still latched from the pagehide that stored it. Clear it and
+        // re-arm visible sections so engagement + page_exit_section fire again.
+        window.addEventListener('pageshow', function (e) {
+          if (!e.persisted) return;
+          exitSent = false;
+          // Reset the baseline so the next page_exit_section measures time on THIS
+          // restored view, not the bfcache-frozen interval (performance.now() keeps
+          // advancing while the page sits frozen). Mirrors the enterTs re-arm below.
+          pageStart = now();
+          Object.keys(visibleNow).forEach(function (id) {
+            if (enterTs[id] == null) enterTs[id] = now();
+          });
+        });
+
         // scroll_to_top — anchor clicks to #top
         document.querySelectorAll('a[href="#top"], a[href^="#top"]').forEach(function (a) {
           a.addEventListener('click', function () {
             track('scroll_to_top', {});
           });
+        });
+      })();
+
+      // ─── ANALYTICS: inquiry-form micro-funnel ──────────
+      // form_field_complete (once per field, on focusout with a value) pinpoints
+      // funnel order; form_abandon on exit when started but not submitted.
+      (function () {
+        var form = document.querySelector('.inquiry-form');
+        if (!form) return;
+        var fieldOrder = ['name', 'email', 'checkin', 'checkout', 'option', 'message'];
+        var started = false;
+        var submitted = false;
+        var done = {};
+        var interacted = {};
+        var completedCount = 0;
+        var lastField = '';
+        form.addEventListener(
+          'focusin',
+          function (e) {
+            if (e.target && e.target.name && e.target.type !== 'hidden') started = true;
+          },
+          true
+        );
+        // Mark a field as user-touched only on real input/change. The <select> has a
+        // pre-selected first option, so focus-through alone must not count as complete.
+        function markInteracted(e) {
+          if (e.target && e.target.name && e.target.type !== 'hidden')
+            interacted[e.target.name] = true;
+        }
+        form.addEventListener('input', markInteracted, true);
+        form.addEventListener('change', markInteracted, true);
+        form.addEventListener('focusout', function (e) {
+          var f = e.target;
+          if (!f || !f.name || f.type === 'hidden') return;
+          lastField = f.name;
+          var hasVal = f.value && String(f.value).trim() !== '';
+          if (hasVal && interacted[f.name] && !done[f.name]) {
+            done[f.name] = true;
+            completedCount++;
+            trackAnalytics('form_field_complete', {
+              field_name: f.name,
+              field_index: fieldOrder.indexOf(f.name),
+            });
+          }
+        });
+        form.addEventListener('submit', function () {
+          submitted = true;
+        });
+        // Fire only on a real terminal unload (pagehide with persisted=false). A
+        // tab/app switch or bfcache entry is not an abandon — the user may return
+        // and submit, which would otherwise emit a false form_abandon.
+        var abandonSent = false;
+        function reportAbandon() {
+          if (abandonSent || !started || submitted) return;
+          abandonSent = true;
+          trackAnalytics('form_abandon', {
+            last_field: lastField,
+            fields_completed: completedCount,
+          });
+        }
+        window.addEventListener('pagehide', function (e) {
+          if (!e.persisted) reportAbandon();
+        });
+      })();
+
+      // ─── ANALYTICS: JS error capture (throttled to 3) ──
+      (function () {
+        var count = 0;
+        function report(message, source, lineno) {
+          if (count >= 3) return;
+          count++;
+          trackAnalytics('js_error', {
+            message: String(message || '').slice(0, 150),
+            source: String(source || '').slice(0, 150),
+            lineno: lineno || 0,
+          });
+        }
+        window.addEventListener('error', function (e) {
+          report(e.message, e.filename, e.lineno);
+        });
+        window.addEventListener('unhandledrejection', function (e) {
+          var r = e && e.reason;
+          report(r && r.message ? r.message : r, 'unhandledrejection', 0);
         });
       })();
     </script>
