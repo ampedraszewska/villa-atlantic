@@ -3326,6 +3326,13 @@
           document.body.style.overflow = 'hidden';
         }
         function close() {
+          // Unwind browser fullscreen on every close path (✕, backdrop, Escape) —
+          // removing .open only sets display:none, which does NOT disconnect lb from
+          // the DOM, so without this the page stays in fullscreen on an empty element.
+          if (document.fullscreenElement || document.webkitFullscreenElement) {
+            var p = (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+            if (p && p.catch) p.catch(function () {});
+          }
           lb.classList.remove('open');
           resetZoom();
           document.body.style.overflow = '';
@@ -3900,6 +3907,10 @@
         window.addEventListener('pageshow', function (e) {
           if (!e.persisted) return;
           exitSent = false;
+          // Reset the baseline so the next page_exit_section measures time on THIS
+          // restored view, not the bfcache-frozen interval (performance.now() keeps
+          // advancing while the page sits frozen). Mirrors the enterTs re-arm below.
+          pageStart = now();
           Object.keys(visibleNow).forEach(function (id) {
             if (enterTs[id] == null) enterTs[id] = now();
           });
