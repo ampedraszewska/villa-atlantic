@@ -46,8 +46,9 @@
       });
     </script>
 
-    <!-- PostHog (Cloud EU) — heatmaps + session replay. Paste the project key
-         below to activate; until then init is skipped (no network call). -->
+    <!-- PostHog (Cloud EU) — heatmaps + session replay. LIVE: a project key is set
+         below, so init runs and loads array.js on every page view. To disable, set
+         the key to an __-prefixed placeholder (the guard below then skips init). -->
     <script>
       !(function (t, e) {
         var o, n, p, r;
@@ -93,7 +94,7 @@
           (e.__SV = 1));
       })(document, window.posthog || []);
 
-      // Owner: paste the PostHog Cloud EU project key here to go live.
+      // PostHog Cloud EU project key (live). Set to an __-prefixed placeholder to disable.
       var POSTHOG_KEY = 'phc_mQGMUxo6aFQgwvpszXNsq2SGVZHFYkxWc8HrJMHSwjFc';
       if (POSTHOG_KEY.indexOf('__') !== 0) {
         posthog.init(POSTHOG_KEY, {
@@ -3380,10 +3381,12 @@
         // Listen to both unprefixed and webkit-prefixed events: WebKit-only browsers
         // (older/pre-16.4 Safari, WebViews) dispatch webkitfullscreenchange.
         function onFullscreenChange() {
-          if (!lb.classList.contains('open')) return;
+          var inFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+          // close() strips .open synchronously, but fullscreenchange fires async after,
+          // so still report a pending exit when closed; only ignore stray enters.
+          if (!lb.classList.contains('open') && inFs) return;
           trackAnalytics('gallery_fullscreen', {
-            state:
-              document.fullscreenElement || document.webkitFullscreenElement ? 'enter' : 'exit',
+            state: inFs ? 'enter' : 'exit',
             gallery: currentGallery,
             image_src: currentSrc(),
           });
