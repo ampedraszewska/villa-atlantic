@@ -3503,10 +3503,26 @@
         } catch (e) {
           /* malformed referrer */
         }
-        if (refHost === location.hostname) refHost = ''; // same-origin = not a referral
+        // same-origin, or our own form processor's post-submit redirect, is not a
+        // referral — otherwise every converting lead's last-touch would be clobbered
+        // by the formsubmit.co ?sent=1 round-trip.
+        if (refHost === location.hostname || refHost === 'formsubmit.co') refHost = '';
 
         var channel = classifyChannel(p, refHost);
-        var last = {
+        // This load carries a real acquisition signal only if it has utm/click-id
+        // params or an external referrer. Plain reloads and internal returns have
+        // none, and must NOT overwrite the stored last-touch with direct.
+        var hasSignal = !!(
+          p.utm_source ||
+          p.utm_medium ||
+          p.gclid ||
+          p.gbraid ||
+          p.wbraid ||
+          p.fbclid ||
+          p.msclkid ||
+          refHost
+        );
+        var touch = {
           channel: channel,
           src: p.utm_source || refHost || '(direct)',
           medium: p.utm_medium || (channel === 'direct' ? '(none)' : channel),
@@ -3526,12 +3542,32 @@
         var isFirstVisit = !first;
         if (isFirstVisit) {
           first = {
-            channel: last.channel,
-            src: last.src,
-            medium: last.medium,
-            campaign: last.campaign,
+            channel: touch.channel,
+            src: touch.src,
+            medium: touch.medium,
+            campaign: touch.campaign,
           };
           lsSet('va_attr_first', JSON.stringify(first));
+        }
+
+        // Last-touch: update only when this load brings a new signal; otherwise keep
+        // the previously stored last-touch so internal returns (e.g. the formsubmit.co
+        // ?sent=1 redirect, or a plain reload) don't reset it to direct/self-referral.
+        // A genuine new channel mid-/cross-session still updates it.
+        var last = null;
+        if (hasSignal) {
+          last = touch;
+          lsSet('va_attr_last', JSON.stringify(touch));
+        } else {
+          var storedLast = lsGet('va_attr_last');
+          if (storedLast) {
+            try {
+              last = JSON.parse(storedLast);
+            } catch (e) {
+              /* corrupt */
+            }
+          }
+          if (!last) last = first || touch;
         }
 
         if (typeof gtag === 'function') {
