@@ -121,6 +121,57 @@ def sanitize(src: str) -> str:
     return "\r\n".join(out) + "\r\n"
 
 
+def _normalize_date(value: str) -> str:
+    """Date-only iCal value (YYYYMMDD) -> YYYY-MM-DD; otherwise returned as-is."""
+    if re.fullmatch(r"\d{8}", value):
+        return f"{value[:4]}-{value[4:6]}-{value[6:8]}"
+    return value
+
+
+def parse_events(text: str) -> dict[str, dict[str, str | None]]:
+    """Parse VEVENTs from iCal text into ``{uid: {start, end, created,
+    last_modified}}``.
+
+    Dates are normalized to ``YYYY-MM-DD`` for date-only values (timed values
+    kept raw). ``created``/``last_modified`` come from the raw feed's CREATED /
+    LAST-MODIFIED (absent in the sanitized feed, which strips them) and are
+    ``None`` when missing. Events without a UID are skipped — they can't be
+    diffed or restored. Shared by sync_guard (event counting) and
+    log_ical_changes (UID diffing)."""
+    text = unfold(text).replace("\r\n", "\n")
+    events: dict[str, dict[str, str | None]] = {}
+    in_event = False
+    cur: dict[str, str | None] = {}
+    for line in text.split("\n"):
+        if line == "BEGIN:VEVENT":
+            in_event, cur = (
+                True,
+                {"start": None, "end": None, "created": None, "last_modified": None},
+            )
+            continue
+        if line == "END:VEVENT":
+            uid = cur.pop("uid", None)
+            if in_event and uid:
+                events[uid] = cur
+            in_event = False
+            continue
+        if not in_event or ":" not in line:
+            continue
+        key = line.split(":", 1)[0].split(";", 1)[0]
+        value = line.split(":", 1)[1]
+        if key == "UID":
+            cur["uid"] = value
+        elif key == "DTSTART":
+            cur["start"] = _normalize_date(value)
+        elif key == "DTEND":
+            cur["end"] = _normalize_date(value)
+        elif key == "CREATED":
+            cur["created"] = value
+        elif key == "LAST-MODIFIED":
+            cur["last_modified"] = value
+    return events
+
+
 def _main(argv: list[str]) -> int:
     if len(argv) < 2 or len(argv) > 3:
         print(
