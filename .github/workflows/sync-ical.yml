@@ -97,7 +97,7 @@ jobs:
           fi
 
       - name: Email alert on blocked wipe
-        if: steps.sync.outputs.wipe == '1'
+        if: always() && steps.sync.outputs.wipe == '1'
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: smtp.gmail.com
@@ -111,7 +111,7 @@ jobs:
           body: ${{ steps.sync.outputs.alert }}
 
       - name: Fail run if a wipe was blocked
-        if: steps.sync.outputs.wipe == '1'
+        if: always() && steps.sync.outputs.wipe == '1'
         run: |
           echo "::error::A calendar wipe was blocked; the live site kept its last-good bookings. See the emailed alert."
           exit 1
