@@ -44,6 +44,18 @@ def _now_iso() -> str:
     return datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+def _tzid_fields(ev: dict) -> dict:
+    """TZID params for a timed booking, included only when present so the
+    common all-day booking keeps its compact record. Lets restore_booking
+    re-emit a zone-anchored DTSTART/DTEND instead of a floating local time."""
+    out: dict = {}
+    if ev.get("start_tzid"):
+        out["start_tzid"] = ev["start_tzid"]
+    if ev.get("end_tzid"):
+        out["end_tzid"] = ev["end_tzid"]
+    return out
+
+
 def diff_events(before_text: str, after_text: str, raw_text: str) -> list[dict]:
     """Return change records (without metadata) for before -> after.
 
@@ -63,6 +75,7 @@ def diff_events(before_text: str, after_text: str, raw_text: str) -> list[dict]:
                 "end": ev["end"],
                 "created": meta.get("created"),
                 "last_modified": meta.get("last_modified"),
+                **_tzid_fields(ev),
             }
         )
 
@@ -76,6 +89,7 @@ def diff_events(before_text: str, after_text: str, raw_text: str) -> list[dict]:
                 "end": ev["end"],
                 "created": None,
                 "last_modified": None,
+                **_tzid_fields(ev),
             }
         )
 
@@ -93,6 +107,7 @@ def diff_events(before_text: str, after_text: str, raw_text: str) -> list[dict]:
                     "end": a["end"],
                     "created": meta.get("created"),
                     "last_modified": meta.get("last_modified"),
+                    **_tzid_fields(a),
                 }
             )
 

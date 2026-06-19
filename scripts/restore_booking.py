@@ -59,6 +59,8 @@ def reconstruct(records: list[dict]) -> dict[str, dict[str, dict]]:
                 "created": rec.get("created"),
                 "status": "present",
                 "removed_at": None,
+                "start_tzid": rec.get("start_tzid"),
+                "end_tzid": rec.get("end_tzid"),
             }
         elif action == "removed":
             entry = bucket.get(uid, {"created": None})
@@ -68,6 +70,8 @@ def reconstruct(records: list[dict]) -> dict[str, dict[str, dict]]:
                     "end": rec.get("end"),
                     "status": "removed",
                     "removed_at": rec.get("detected_at"),
+                    "start_tzid": rec.get("start_tzid"),
+                    "end_tzid": rec.get("end_tzid"),
                 }
             )
             entry.setdefault("created", None)
@@ -100,26 +104,32 @@ def _report(state: dict[str, dict[str, dict]]) -> str:
     return "\n".join(lines) if lines else "Ledger is empty — nothing recorded yet."
 
 
-def _dt_property(prop: str, value: str) -> str:
+def _dt_property(prop: str, value: str, tzid: str | None = None) -> str:
     """Render a DTSTART/DTEND line from a ledger value.
 
     Date-only ledger values (``YYYY-MM-DD``) become
     ``<prop>;VALUE=DATE:YYYYMMDD``. Timed values are kept raw (e.g.
     ``20260713T100000Z``) and emitted without the ``VALUE=DATE`` parameter —
     tagging a date-time as ``VALUE=DATE`` violates RFC 5545 and makes parsers
-    (FullCalendar's ical.js included) silently drop the time."""
+    (FullCalendar's ical.js included) silently drop the time. A timed value
+    with a ``tzid`` is re-anchored to its original zone
+    (``<prop>;TZID=<tzid>:<value>``); without one it stays a UTC ``Z`` value or
+    a floating local time. Emitting a zoned booking with no TZID would let the
+    viewer's browser timezone shift it, diverging from the live feed."""
     if "T" in value:
-        return f"{prop}:{value}"
+        return f"{prop};TZID={tzid}:{value}" if tzid else f"{prop}:{value}"
     return f"{prop};VALUE=DATE:{value.replace('-', '')}"
 
 
-def build_vevent(uid: str, start: str, end: str) -> str:
+def build_vevent(
+    uid: str, start: str, end: str, start_tzid: str | None = None, end_tzid: str | None = None
+) -> str:
     """A sanitized-style VEVENT block (CRLF, no trailing newline)."""
     return "\r\n".join(
         [
             "BEGIN:VEVENT",
-            _dt_property("DTSTART", start),
-            _dt_property("DTEND", end),
+            _dt_property("DTSTART", start, start_tzid),
+            _dt_property("DTEND", end, end_tzid),
             f"UID:{uid}",
             "SUMMARY:Booked",
             "TRANSP:OPAQUE",
@@ -137,10 +147,8 @@ def insert_event(ics_text: str, vevent: str) -> str:
     return ics_text[:idx] + vevent + "\r\n" + ics_text[idx:]
 
 
-def reinstate(
-    uid: str, state: dict[str, dict[str, dict]], apt: str | None
-) -> tuple[str, str, str, str]:
-    """Resolve a uid to (apartment, start, end). Raises if ambiguous/missing."""
+def reinstate(uid: str, state: dict[str, dict[str, dict]], apt: str | None) -> tuple[str, dict]:
+    """Resolve a uid to (apartment, booking entry). Raises if ambiguous/missing."""
     hits = [
         (a, bookings[uid])
         for a, bookings in state.items()
@@ -158,7 +166,7 @@ def reinstate(
     found_apt, entry = hits[0]
     if not entry.get("start") or not entry.get("end"):
         raise SystemExit(f"uid {uid} has no recorded dates — cannot rebuild")
-    return found_apt, entry["start"], entry["end"], entry["status"]
+    return found_apt, entry
 
 
 def _main() -> int:
@@ -181,7 +189,8 @@ def _main() -> int:
         print(_report(state))
         return 0
 
-    found_apt, start, end, status = reinstate(args.reinstate, state, args.apt)
+    found_apt, entry = reinstate(args.reinstate, state, args.apt)
+    start, end, status = entry["start"], entry["end"], entry["status"]
     live_path = REPO_ROOT / "ical" / f"{found_apt}.ics"
     if not live_path.exists():
         raise SystemExit(f"live feed not found: {live_path}")
@@ -189,7 +198,9 @@ def _main() -> int:
     if f"UID:{args.reinstate}" in live:
         print(f"uid {args.reinstate} already present in {live_path.name} — nothing to do.")
         return 0
-    vevent = build_vevent(args.reinstate, start, end)
+    vevent = build_vevent(
+        args.reinstate, start, end, entry.get("start_tzid"), entry.get("end_tzid")
+    )
     live_path.write_text(insert_event(live, vevent), encoding="utf-8")
     note = "" if status == "removed" else " (was still marked present in ledger)"
     print(f"Reinstated {start} -> {end} into {live_path.name}{note}.")

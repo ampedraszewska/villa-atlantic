@@ -4,14 +4,16 @@ import json
 
 import pytest
 from icalendar import Calendar
+from log_ical_changes import diff_events
 from restore_booking import (
     _report,
     build_vevent,
     insert_event,
     load_ledger,
     reconstruct,
+    reinstate,
 )
-from sanitize_ical import parse_events
+from sanitize_ical import parse_events, sanitize
 
 
 def _write_ledger(path, records):
@@ -150,3 +152,47 @@ def test_build_vevent_date_only_uses_value_date():
     vevent = build_vevent("d@g", "2026-07-13", "2026-07-22")
     assert "DTSTART;VALUE=DATE:20260713" in vevent
     assert "DTEND;VALUE=DATE:20260722" in vevent
+
+
+def test_build_vevent_reanchors_tzid():
+    """A timed booking carrying a TZID must be re-emitted with that TZID, not
+    as a floating local time the viewer's browser would re-interpret."""
+    vevent = build_vevent(
+        "z@g", "20260601T160000", "20260602T100000", "Atlantic/Canary", "Atlantic/Canary"
+    )
+    assert "DTSTART;TZID=Atlantic/Canary:20260601T160000" in vevent
+    assert "DTEND;TZID=Atlantic/Canary:20260602T100000" in vevent
+    assert "VALUE=DATE" not in vevent
+    live = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nEND:VCALENDAR\r\n"
+    Calendar.from_ical(insert_event(live, vevent))  # parses as valid iCal
+
+
+def test_tzid_round_trips_from_live_feed_through_ledger_to_reinstate(tmp_path):
+    """End-to-end: a zone-anchored timed booking deleted from Google must come
+    back out of --reinstate with its original TZID intact. sanitize keeps the
+    TZID, so the ledger (and thus the restored event) must too — otherwise the
+    recovered block becomes a floating local time and diverges from the live
+    feed for guests in other timezones."""
+    raw = (
+        "BEGIN:VCALENDAR\r\nVERSION:2.0\r\n"
+        "BEGIN:VEVENT\r\nDTSTART;TZID=Atlantic/Canary:20260601T160000\r\n"
+        "DTEND;TZID=Atlantic/Canary:20260602T100000\r\nUID:z@g\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
+    )
+    live_feed = sanitize(raw)  # what the public site serves — keeps the TZID
+
+    # The ledger records the removal of this booking (before=live_feed, after=empty).
+    records = diff_events(live_feed, "", "")
+    assert len(records) == 1 and records[0]["action"] == "removed"
+    assert records[0]["start_tzid"] == "Atlantic/Canary"
+
+    # Stamp + replay the ledger, then reinstate into an empty live feed.
+    stamped = [{"detected_at": "2026-06-14T10:00:00Z", "apartment": "cliffs", **records[0]}]
+    _, entry = reinstate("z@g", reconstruct(stamped), "cliffs")
+    vevent = build_vevent(
+        "z@g", entry["start"], entry["end"], entry["start_tzid"], entry["end_tzid"]
+    )
+    result = insert_event("BEGIN:VCALENDAR\r\nVERSION:2.0\r\nEND:VCALENDAR\r\n", vevent)
+
+    assert "DTSTART;TZID=Atlantic/Canary:20260601T160000" in result
+    Calendar.from_ical(result)  # valid iCal
+    assert parse_events(result)["z@g"]["start_tzid"] == "Atlantic/Canary"

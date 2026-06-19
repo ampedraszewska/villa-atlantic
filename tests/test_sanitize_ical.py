@@ -280,6 +280,23 @@ def test_parse_events_recurrence_override_keeps_master(body):
     assert events["closed@g"]["end"] == "2027-01-05"
 
 
+def test_parse_events_captures_tzid_for_timed_values():
+    """A timed value's zone lives only in its TZID parameter; parse_events must
+    keep it so a restored booking is not reduced to a floating local time.
+    Date-only values carry no TZID."""
+    timed = (
+        "BEGIN:VEVENT\r\nDTSTART;TZID=Atlantic/Canary:20260601T160000\r\n"
+        "DTEND;TZID=Atlantic/Canary:20260602T100000\r\nUID:z@g\r\nEND:VEVENT\r\n"
+    )
+    ev = parse_events(_calendar(timed))["z@g"]
+    assert ev["start"] == "20260601T160000"
+    assert ev["start_tzid"] == "Atlantic/Canary"
+    assert ev["end_tzid"] == "Atlantic/Canary"
+
+    allday = parse_events(_calendar(_MASTER))["closed@g"]
+    assert allday["start_tzid"] is None and allday["end_tzid"] is None
+
+
 def test_multiple_events_sanitized_and_single_day_dropped():
     out = sanitize(_load("multiple_events"))
     events = _events(out)
