@@ -5,10 +5,10 @@ on:
     - cron: '17 * * * *'
   workflow_dispatch:
     inputs:
-      confirm_wipe:
-        description: 'Accept a full calendar wipe (publish the empty feed). Use only when a calendar was intentionally cleared.'
-        type: boolean
-        default: false
+      confirm_wipe_apt:
+        description: 'Name of ONE calendar (e.g. cliffs) to accept a full wipe for (publish its empty feed). Bypasses the guard for that feed only; all others stay protected.'
+        type: string
+        default: ''
 
 permissions:
   contents: write
@@ -22,7 +22,7 @@ jobs:
       - name: Fetch, guard, sanitize, log
         id: sync
         env:
-          CONFIRM_WIPE: ${{ github.event.inputs.confirm_wipe }}
+          CONFIRM_WIPE_APT: ${{ github.event.inputs.confirm_wipe_apt }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -euo pipefail
@@ -44,16 +44,23 @@ jobs:
               || : > "ical/$apt.before.ics"
 
             # Guard: a feed that held >=2 bookings returning 0 is a wipe.
-            # confirm_wipe=true bypasses it (intentional clear).
-            if [ "${CONFIRM_WIPE:-false}" != "true" ] \
+            # confirm_wipe_apt=<this apt> bypasses it for that one feed only.
+            if [ "$apt" != "${CONFIRM_WIPE_APT:-}" ] \
                && ! guard_out="$(python3 scripts/sync_guard.py "ical/$apt.before.ics" "ical/$apt.candidate.ics")"; then
               echo "WIPE blocked for $apt — keeping last-good live feed."
               cp "ical/$apt.candidate.ics" "ical/$apt.suspect.ics"
-              python3 scripts/log_ical_changes.py --apt "$apt" --quarantined \
+              # Idempotent: only alert/fail on the transition INTO the wiped
+              # state. A persisting wipe keeps the last-good feed unchanged, so
+              # without this every hourly run would re-commit, re-email, re-fail.
+              q_status="$(python3 scripts/log_ical_changes.py --apt "$apt" --quarantined \
                 --before "ical/$apt.before.ics" --changelog ical/changelog.jsonl \
-                --run-url "$RUN_URL" --sha "$SHA_BEFORE"
-              { echo "Calendar: $apt"; echo "$guard_out"; echo; } >> ical/.wipe_alert.txt
-              WIPE=1
+                --run-url "$RUN_URL" --sha "$SHA_BEFORE")"
+              if [ "$q_status" = "recorded" ]; then
+                { echo "Calendar: $apt"; echo "$guard_out"; echo; } >> ical/.wipe_alert.txt
+                WIPE=1
+              else
+                echo "Wipe for $apt already quarantined — no new alert."
+              fi
             else
               # Safe (or operator-confirmed): record the diff, then publish.
               python3 scripts/log_ical_changes.py --apt "$apt" \
@@ -71,7 +78,8 @@ jobs:
             { echo "Run: $RUN_URL"; echo; \
               echo "Live site untouched — it still shows the last-good bookings."; \
               echo "If this clear was intentional, re-run this workflow (Actions ->"; \
-              echo "Sync iCal feeds -> Run workflow) with confirm_wipe = true to accept it."; \
+              echo "Sync iCal feeds -> Run workflow) with confirm_wipe_apt set to the"; \
+              echo "name of the cleared calendar (e.g. cliffs) to accept that one only."; \
             } >> ical/.wipe_alert.txt
             { echo 'alert<<EOF_ALERT'; cat ical/.wipe_alert.txt; echo 'EOF_ALERT'; } >> "$GITHUB_OUTPUT"
           fi

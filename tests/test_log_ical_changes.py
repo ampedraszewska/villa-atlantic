@@ -1,8 +1,13 @@
 """Tests for scripts/log_ical_changes.py — the change ledger."""
 
 import json
+import pathlib
+import subprocess
+import sys
 
 from log_ical_changes import diff_events, quarantine_record
+
+SCRIPT = pathlib.Path(__file__).resolve().parent.parent / "scripts" / "log_ical_changes.py"
 
 
 def _sanitized(uid: str, start: str, end: str) -> str:
@@ -76,11 +81,7 @@ def test_quarantine_record_preserves_all_bookings():
 
 
 def test_cli_appends_jsonl(tmp_path):
-    import pathlib
-    import subprocess
-    import sys
-
-    script = pathlib.Path(__file__).resolve().parent.parent / "scripts" / "log_ical_changes.py"
+    script = SCRIPT
     before = tmp_path / "before.ics"
     after = tmp_path / "after.ics"
     raw = tmp_path / "raw.ics"
@@ -123,3 +124,62 @@ def test_cli_appends_jsonl(tmp_path):
     assert entry["action"] == "added"
     assert entry["run_url"] == "http://run/1"
     assert entry["sha_before"] == "abc123"
+
+
+def _run_quarantine(before, log, run_n):
+    return subprocess.run(
+        [
+            sys.executable,
+            str(SCRIPT),
+            "--apt",
+            "cliffs",
+            "--quarantined",
+            "--before",
+            str(before),
+            "--changelog",
+            str(log),
+            "--run-url",
+            f"http://run/{run_n}",
+            "--sha",
+            f"sha{run_n}",
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+
+
+def test_quarantine_is_idempotent_across_runs(tmp_path):
+    """A persisting wipe keeps the last-good feed unchanged, so the before-state
+    is identical every hour. The quarantine must be logged once (printing
+    'recorded'), then skipped (printing 'duplicate') — otherwise every hourly
+    run re-commits a redundant record to the public ledger and re-fires the
+    alert."""
+    before = tmp_path / "before.ics"
+    log = tmp_path / "changelog.jsonl"
+    before.write_text(
+        _cal(_sanitized("a@g", "20260713", "20260722") + _sanitized("b@g", "20260901", "20260910")),
+        encoding="utf-8",
+    )
+    assert _run_quarantine(before, log, 1) == "recorded"
+    assert _run_quarantine(before, log, 2) == "duplicate"
+    assert _run_quarantine(before, log, 3) == "duplicate"
+    assert len(log.read_text(encoding="utf-8").splitlines()) == 1
+
+
+def test_quarantine_re_records_when_wipe_changes(tmp_path):
+    """Dedup is content-based: a quarantine for a different before-state (a new
+    wipe) must still be recorded after a previous one."""
+    before = tmp_path / "before.ics"
+    log = tmp_path / "changelog.jsonl"
+    before.write_text(
+        _cal(_sanitized("a@g", "20260713", "20260722") + _sanitized("b@g", "20260901", "20260910")),
+        encoding="utf-8",
+    )
+    assert _run_quarantine(before, log, 1) == "recorded"
+    before.write_text(
+        _cal(_sanitized("c@g", "20261001", "20261010") + _sanitized("d@g", "20261101", "20261110")),
+        encoding="utf-8",
+    )
+    assert _run_quarantine(before, log, 2) == "recorded"
+    assert len(log.read_text(encoding="utf-8").splitlines()) == 2

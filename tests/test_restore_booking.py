@@ -127,3 +127,26 @@ def test_reinstate_produces_valid_event_with_ledger_dates():
 def test_insert_event_refuses_malformed_feed():
     with pytest.raises(ValueError):
         insert_event("not a calendar", build_vevent("a@g", "2026-07-13", "2026-07-22"))
+
+
+def test_build_vevent_keeps_timed_value_raw():
+    """A timed ledger value (parse_events keeps timed values raw) must be
+    emitted without the VALUE=DATE parameter — tagging a date-time as
+    VALUE=DATE violates RFC 5545 and makes parsers drop the time, turning a
+    timed booking into a broken all-day one."""
+    vevent = build_vevent("t@g", "20260713T100000Z", "20260715T120000Z")
+    assert "DTSTART:20260713T100000Z" in vevent
+    assert "DTEND:20260715T120000Z" in vevent
+    assert "VALUE=DATE" not in vevent
+    # icalendar parses it as a real date-time, and it round-trips raw.
+    live = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nEND:VCALENDAR\r\n"
+    result = insert_event(live, vevent)
+    Calendar.from_ical(result)  # must not raise
+    assert parse_events(result)["t@g"]["start"] == "20260713T100000Z"
+
+
+def test_build_vevent_date_only_uses_value_date():
+    """Date-only ledger values keep the all-day VALUE=DATE form."""
+    vevent = build_vevent("d@g", "2026-07-13", "2026-07-22")
+    assert "DTSTART;VALUE=DATE:20260713" in vevent
+    assert "DTEND;VALUE=DATE:20260722" in vevent

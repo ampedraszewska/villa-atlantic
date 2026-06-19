@@ -100,18 +100,26 @@ def _report(state: dict[str, dict[str, dict]]) -> str:
     return "\n".join(lines) if lines else "Ledger is empty — nothing recorded yet."
 
 
-def _to_ics_date(iso_date: str) -> str:
-    """YYYY-MM-DD -> YYYYMMDD (iCal date-only)."""
-    return iso_date.replace("-", "")
+def _dt_property(prop: str, value: str) -> str:
+    """Render a DTSTART/DTEND line from a ledger value.
+
+    Date-only ledger values (``YYYY-MM-DD``) become
+    ``<prop>;VALUE=DATE:YYYYMMDD``. Timed values are kept raw (e.g.
+    ``20260713T100000Z``) and emitted without the ``VALUE=DATE`` parameter —
+    tagging a date-time as ``VALUE=DATE`` violates RFC 5545 and makes parsers
+    (FullCalendar's ical.js included) silently drop the time."""
+    if "T" in value:
+        return f"{prop}:{value}"
+    return f"{prop};VALUE=DATE:{value.replace('-', '')}"
 
 
 def build_vevent(uid: str, start: str, end: str) -> str:
-    """A sanitized-style all-day VEVENT block (CRLF, no trailing newline)."""
+    """A sanitized-style VEVENT block (CRLF, no trailing newline)."""
     return "\r\n".join(
         [
             "BEGIN:VEVENT",
-            f"DTSTART;VALUE=DATE:{_to_ics_date(start)}",
-            f"DTEND;VALUE=DATE:{_to_ics_date(end)}",
+            _dt_property("DTSTART", start),
+            _dt_property("DTEND", end),
             f"UID:{uid}",
             "SUMMARY:Booked",
             "TRANSP:OPAQUE",

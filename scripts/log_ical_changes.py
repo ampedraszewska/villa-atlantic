@@ -132,6 +132,44 @@ def _read(path: str | None) -> str:
     return p.read_text(encoding="utf-8") if p.exists() else ""
 
 
+def _last_record_for(changelog: pathlib.Path, apt: str) -> dict | None:
+    """The most recent ledger record for an apartment, or None."""
+    if not changelog.exists():
+        return None
+    last: dict | None = None
+    for line in changelog.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        try:
+            rec = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if rec.get("apartment") == apt:
+            last = rec
+    return last
+
+
+def _same_quarantine(prev: dict | None, new_rec: dict) -> bool:
+    """True if the apartment's last record is already a quarantine for the same
+    blocked wipe (same preserved bookings) — only metadata would differ.
+
+    A blocked wipe keeps the last-good live feed, so the before-state is
+    identical on every subsequent hourly run; re-recording it would spam the
+    public ledger and re-fire the alert. This lets the caller record + alert
+    only on the transition into the wiped state."""
+    if not prev or prev.get("action") != "quarantined":
+        return False
+    if prev.get("before_count") != new_rec.get("before_count"):
+        return False
+
+    def _key(rec: dict) -> list:
+        return sorted(
+            (p.get("uid"), p.get("start"), p.get("end")) for p in rec.get("preserved", [])
+        )
+
+    return _key(prev) == _key(new_rec)
+
+
 def _main() -> int:
     ap = argparse.ArgumentParser(description="Append calendar change records to the ledger.")
     ap.add_argument("--apt", required=True, help="apartment name, e.g. cliffs / gardens")
@@ -146,20 +184,28 @@ def _main() -> int:
     args = ap.parse_args()
 
     detected_at = args.detected_at or _now_iso()
+    out = pathlib.Path(args.changelog)
+
     if args.quarantined:
-        records = [quarantine_record(_read(args.before))]
+        new_rec = quarantine_record(_read(args.before))
+        if _same_quarantine(_last_record_for(out, args.apt), new_rec):
+            # Same wipe already quarantined; don't re-log/re-alert every hour.
+            print("duplicate")
+            return 0
+        records = [new_rec]
     else:
         records = diff_events(_read(args.before), _read(args.after), _read(args.raw))
 
     if not records:
         return 0
 
-    out = pathlib.Path(args.changelog)
     out.parent.mkdir(parents=True, exist_ok=True)
     with out.open("a", encoding="utf-8") as fh:
         for rec in records:
             line = _stamp(rec, args.apt, detected_at, args.run_url, args.sha)
             fh.write(json.dumps(line, ensure_ascii=False) + "\n")
+    if args.quarantined:
+        print("recorded")
     return 0
 
 

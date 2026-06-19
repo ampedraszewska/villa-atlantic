@@ -136,10 +136,13 @@ def parse_events(text: str) -> dict[str, dict[str, str | None]]:
     kept raw). ``created``/``last_modified`` come from the raw feed's CREATED /
     LAST-MODIFIED (absent in the sanitized feed, which strips them) and are
     ``None`` when missing. Events without a UID are skipped — they can't be
-    diffed or restored. Shared by sync_guard (event counting) and
+    diffed or restored. A recurring event's per-occurrence overrides (same UID
+    plus RECURRENCE-ID) are folded into the master so the master's canonical
+    dates are never clobbered. Shared by sync_guard (event counting) and
     log_ical_changes (UID diffing)."""
     text = unfold(text).replace("\r\n", "\n")
     events: dict[str, dict[str, str | None]] = {}
+    masters: set[str] = set()
     in_event = False
     cur: dict[str, str | None] = {}
     for line in text.split("\n"):
@@ -151,8 +154,18 @@ def parse_events(text: str) -> dict[str, dict[str, str | None]]:
             continue
         if line == "END:VEVENT":
             uid = cur.pop("uid", None)
+            is_override = bool(cur.pop("is_override", False))
             if in_event and uid:
-                events[uid] = cur
+                # Google exports a recurring booking as a master VEVENT plus one
+                # same-UID VEVENT per edited occurrence (carrying RECURRENCE-ID).
+                # Keep the master's canonical dates; an instance override must
+                # never overwrite the master (or vice-versa, regardless of the
+                # order they appear in the feed).
+                if not is_override:
+                    events[uid] = cur
+                    masters.add(uid)
+                elif uid not in masters:
+                    events.setdefault(uid, cur)
             in_event = False
             continue
         if not in_event or ":" not in line:
@@ -169,6 +182,8 @@ def parse_events(text: str) -> dict[str, dict[str, str | None]]:
             cur["created"] = value
         elif key == "LAST-MODIFIED":
             cur["last_modified"] = value
+        elif key == "RECURRENCE-ID":
+            cur["is_override"] = True  # transient flag, popped at END:VEVENT
     return events
 
 
