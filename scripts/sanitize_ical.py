@@ -121,6 +121,94 @@ def sanitize(src: str) -> str:
     return "\r\n".join(out) + "\r\n"
 
 
+def _normalize_date(value: str) -> str:
+    """Date-only iCal value (YYYYMMDD) -> YYYY-MM-DD; otherwise returned as-is."""
+    if re.fullmatch(r"\d{8}", value):
+        return f"{value[:4]}-{value[4:6]}-{value[6:8]}"
+    return value
+
+
+def _tzid_param(lhs: str) -> str | None:
+    """Extract the TZID parameter from a DTSTART/DTEND line's left-hand side
+    (everything before the ``:``), e.g. ``DTSTART;TZID=Atlantic/Canary`` ->
+    ``Atlantic/Canary``. Returns None when no TZID is present (date-only or UTC
+    values). A timed value's zone lives only in this parameter, so it has to be
+    carried alongside the value for a faithful round-trip."""
+    m = re.search(r";TZID=([^;:]+)", lhs)
+    return m.group(1) if m else None
+
+
+def parse_events(text: str) -> dict[str, dict[str, str | None]]:
+    """Parse VEVENTs from iCal text into ``{uid: {start, end, created,
+    last_modified, start_tzid, end_tzid}}``.
+
+    Dates are normalized to ``YYYY-MM-DD`` for date-only values (timed values
+    kept raw). ``start_tzid``/``end_tzid`` carry a timed value's TZID (``None``
+    for date-only / UTC values) so a restored event keeps its original zone
+    instead of becoming a floating local time. ``created``/``last_modified``
+    come from the raw feed's CREATED / LAST-MODIFIED (absent in the sanitized
+    feed, which strips them) and are ``None`` when missing. Events without a UID
+    are skipped — they can't be
+    diffed or restored. A recurring event's per-occurrence overrides (same UID
+    plus RECURRENCE-ID) are folded into the master so the master's canonical
+    dates are never clobbered. Shared by sync_guard (event counting) and
+    log_ical_changes (UID diffing)."""
+    text = unfold(text).replace("\r\n", "\n")
+    events: dict[str, dict[str, str | None]] = {}
+    masters: set[str] = set()
+    in_event = False
+    cur: dict[str, str | None] = {}
+    for line in text.split("\n"):
+        if line == "BEGIN:VEVENT":
+            in_event, cur = (
+                True,
+                {
+                    "start": None,
+                    "end": None,
+                    "created": None,
+                    "last_modified": None,
+                    "start_tzid": None,
+                    "end_tzid": None,
+                },
+            )
+            continue
+        if line == "END:VEVENT":
+            uid = cur.pop("uid", None)
+            is_override = bool(cur.pop("is_override", False))
+            if in_event and uid:
+                # Google exports a recurring booking as a master VEVENT plus one
+                # same-UID VEVENT per edited occurrence (carrying RECURRENCE-ID).
+                # Keep the master's canonical dates; an instance override must
+                # never overwrite the master (or vice-versa, regardless of the
+                # order they appear in the feed).
+                if not is_override:
+                    events[uid] = cur
+                    masters.add(uid)
+                elif uid not in masters:
+                    events.setdefault(uid, cur)
+            in_event = False
+            continue
+        if not in_event or ":" not in line:
+            continue
+        lhs, value = line.split(":", 1)
+        key = lhs.split(";", 1)[0]
+        if key == "UID":
+            cur["uid"] = value
+        elif key == "DTSTART":
+            cur["start"] = _normalize_date(value)
+            cur["start_tzid"] = _tzid_param(lhs)
+        elif key == "DTEND":
+            cur["end"] = _normalize_date(value)
+            cur["end_tzid"] = _tzid_param(lhs)
+        elif key == "CREATED":
+            cur["created"] = value
+        elif key == "LAST-MODIFIED":
+            cur["last_modified"] = value
+        elif key == "RECURRENCE-ID":
+            cur["is_override"] = True  # transient flag, popped at END:VEVENT
+    return events
+
+
 def _main(argv: list[str]) -> int:
     if len(argv) < 2 or len(argv) > 3:
         print(

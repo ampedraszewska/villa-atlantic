@@ -13,7 +13,7 @@ import sys
 
 import pytest
 from icalendar import Calendar
-from sanitize_ical import KEEP_IN_EVENT, sanitize, shift_dtend_back_one_day
+from sanitize_ical import KEEP_IN_EVENT, parse_events, sanitize, shift_dtend_back_one_day
 
 FIXTURES = pathlib.Path(__file__).parent / "fixtures" / "ical"
 SCRIPT = pathlib.Path(__file__).resolve().parent.parent / "scripts" / "sanitize_ical.py"
@@ -250,6 +250,51 @@ def test_rrule_and_exdate_preserved():
     assert len(events) == 1
     assert "RRULE" in events[0]
     assert "EXDATE" in events[0]
+
+
+# A recurring booking edited at one occurrence is exported as a master VEVENT
+# (RRULE) plus a same-UID VEVENT carrying RECURRENCE-ID. parse_events must not
+# let the override clobber the master — doing so corrupts the ledger dates and
+# undercounts events for the wipe guard.
+_MASTER = (
+    "BEGIN:VEVENT\r\nDTSTART;VALUE=DATE:20261220\r\nDTEND;VALUE=DATE:20270105\r\n"
+    "UID:closed@g\r\nRRULE:FREQ=YEARLY\r\nEND:VEVENT\r\n"
+)
+_OVERRIDE = (
+    "BEGIN:VEVENT\r\nDTSTART;VALUE=DATE:20271220\r\nDTEND;VALUE=DATE:20271226\r\n"
+    "UID:closed@g\r\nRECURRENCE-ID;VALUE=DATE:20271220\r\nEND:VEVENT\r\n"
+)
+
+
+def _calendar(body: str) -> str:
+    return f"BEGIN:VCALENDAR\r\nVERSION:2.0\r\n{body}END:VCALENDAR\r\n"
+
+
+@pytest.mark.parametrize("body", [_MASTER + _OVERRIDE, _OVERRIDE + _MASTER])
+def test_parse_events_recurrence_override_keeps_master(body):
+    """The master's canonical dates win and the series counts once, whatever
+    order the master and its RECURRENCE-ID override appear in the feed."""
+    events = parse_events(_calendar(body))
+    assert set(events) == {"closed@g"}
+    assert events["closed@g"]["start"] == "2026-12-20"
+    assert events["closed@g"]["end"] == "2027-01-05"
+
+
+def test_parse_events_captures_tzid_for_timed_values():
+    """A timed value's zone lives only in its TZID parameter; parse_events must
+    keep it so a restored booking is not reduced to a floating local time.
+    Date-only values carry no TZID."""
+    timed = (
+        "BEGIN:VEVENT\r\nDTSTART;TZID=Atlantic/Canary:20260601T160000\r\n"
+        "DTEND;TZID=Atlantic/Canary:20260602T100000\r\nUID:z@g\r\nEND:VEVENT\r\n"
+    )
+    ev = parse_events(_calendar(timed))["z@g"]
+    assert ev["start"] == "20260601T160000"
+    assert ev["start_tzid"] == "Atlantic/Canary"
+    assert ev["end_tzid"] == "Atlantic/Canary"
+
+    allday = parse_events(_calendar(_MASTER))["closed@g"]
+    assert allday["start_tzid"] is None and allday["end_tzid"] is None
 
 
 def test_multiple_events_sanitized_and_single_day_dropped():

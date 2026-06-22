@@ -3,3 +3,11 @@ images/originals/
 .gstack/
 __pycache__/
 .claude/
+.venv*/
+
+# Sync-pipeline scratch — only ical/*.ics and ical/changelog.jsonl are committed.
+ical/*.raw.ics
+ical/*.candidate.ics
+ical/*.before.ics
+ical/*.suspect.ics
+ical/.wipe_alert.txt

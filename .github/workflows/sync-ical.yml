@@ -4,6 +4,11 @@ on:
   schedule:
     - cron: '17 * * * *'
   workflow_dispatch:
+    inputs:
+      confirm_wipe_apt:
+        description: 'Name of ONE calendar (e.g. cliffs) to accept a full wipe for (publish its empty feed). Bypasses the guard for that feed only; all others stay protected.'
+        type: string
+        default: ''
 
 permissions:
   contents: write
@@ -14,25 +19,110 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Fetch and sanitize iCal feeds
+      - name: Fetch, guard, sanitize, log
+        id: sync
+        env:
+          CONFIRM_WIPE_APT: ${{ github.event.inputs.confirm_wipe_apt }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
+          set -euo pipefail
           mkdir -p ical
-          curl -fsS "https://calendar.google.com/calendar/ical/b2a835e6bed7c0910197c6510d83e2183cd6a0ef16dc04db27d6126d82f53f8b%40group.calendar.google.com/public/basic.ics" -o ical/cliffs.raw.ics
-          curl -fsS "https://calendar.google.com/calendar/ical/38db9cfe40fa5b786c8dda63f375310c28e3a776d2b47db18d12b90c94131042%40group.calendar.google.com/public/basic.ics" -o ical/gardens.raw.ics
-          python3 scripts/sanitize_ical.py ical/cliffs.raw.ics  ical/cliffs.ics
-          python3 scripts/sanitize_ical.py ical/gardens.raw.ics ical/gardens.ics
-          rm -f ical/*.raw.ics
-          echo "--- cliffs ---"; cat ical/cliffs.ics
-          echo "--- gardens ---"; cat ical/gardens.ics
+          declare -A FEEDS=(
+            [cliffs]="https://calendar.google.com/calendar/ical/b2a835e6bed7c0910197c6510d83e2183cd6a0ef16dc04db27d6126d82f53f8b%40group.calendar.google.com/public/basic.ics"
+            [gardens]="https://calendar.google.com/calendar/ical/38db9cfe40fa5b786c8dda63f375310c28e3a776d2b47db18d12b90c94131042%40group.calendar.google.com/public/basic.ics"
+          )
+          SHA_BEFORE="$(git rev-parse --short HEAD)"
+          WIPE=0
+          : > ical/.wipe_alert.txt
+
+          # Emit the step outputs on EXIT — including an abnormal abort (a feed's
+          # curl 404s, a script raises) part-way through the loop. Writing wipe=
+          # only after the loop would, on such an abort, leave it unset and
+          # silently skip the alert/fail steps for a wipe already detected on the
+          # other feed. The trap preserves whatever WIPE/alert had accumulated.
+          emit_outputs() {
+            local rc=$?
+            echo "wipe=$WIPE" >> "$GITHUB_OUTPUT"
+            if [ "$WIPE" = "1" ]; then
+              { echo "Run: $RUN_URL"; echo
+                echo "Live site untouched — it still shows the last-good bookings."
+                echo "If this clear was intentional, re-run this workflow (Actions ->"
+                echo "Sync iCal feeds -> Run workflow) with confirm_wipe_apt set to the"
+                echo "name of the cleared calendar (e.g. cliffs) to accept that one only."
+              } >> ical/.wipe_alert.txt
+              { echo 'alert<<EOF_ALERT'; cat ical/.wipe_alert.txt; echo 'EOF_ALERT'; } >> "$GITHUB_OUTPUT"
+            fi
+            exit "$rc"
+          }
+          trap emit_outputs EXIT
+
+          for apt in "${!FEEDS[@]}"; do
+            curl -fsS "${FEEDS[$apt]}" -o "ical/$apt.raw.ics"
+            python3 scripts/sanitize_ical.py "ical/$apt.raw.ics" "ical/$apt.candidate.ics"
+
+            # before-state = the currently committed live feed (empty if absent)
+            git show "HEAD:ical/$apt.ics" > "ical/$apt.before.ics" 2>/dev/null \
+              || : > "ical/$apt.before.ics"
+
+            # Guard: a feed that held >=2 bookings returning 0 is a wipe.
+            # confirm_wipe_apt=<this apt> bypasses it for that one feed only.
+            if [ "$apt" != "${CONFIRM_WIPE_APT:-}" ] \
+               && ! guard_out="$(python3 scripts/sync_guard.py "ical/$apt.before.ics" "ical/$apt.candidate.ics")"; then
+              echo "WIPE blocked for $apt — keeping last-good live feed."
+              cp "ical/$apt.candidate.ics" "ical/$apt.suspect.ics"
+              # Idempotent: only alert/fail on the transition INTO the wiped
+              # state. A persisting wipe keeps the last-good feed unchanged, so
+              # without this every hourly run would re-commit, re-email, re-fail.
+              q_status="$(python3 scripts/log_ical_changes.py --apt "$apt" --quarantined \
+                --before "ical/$apt.before.ics" --changelog ical/changelog.jsonl \
+                --run-url "$RUN_URL" --sha "$SHA_BEFORE")"
+              if [ "$q_status" = "recorded" ]; then
+                { echo "Calendar: $apt"; echo "$guard_out"; echo; } >> ical/.wipe_alert.txt
+                WIPE=1
+              else
+                echo "Wipe for $apt already quarantined — no new alert."
+              fi
+            else
+              # Safe (or operator-confirmed): record the diff, then publish.
+              python3 scripts/log_ical_changes.py --apt "$apt" \
+                --before "ical/$apt.before.ics" --after "ical/$apt.candidate.ics" \
+                --raw "ical/$apt.raw.ics" --changelog ical/changelog.jsonl \
+                --run-url "$RUN_URL" --sha "$SHA_BEFORE"
+              mv "ical/$apt.candidate.ics" "ical/$apt.ics"
+            fi
+          done
+
+          rm -f ical/*.raw.ics ical/*.candidate.ics ical/*.before.ics
+          # Outputs (wipe= and the alert) are emitted by the EXIT trap above.
 
       - name: Commit if changed
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          if git diff --quiet -- ical/; then
-            echo "No ICS changes."
-            exit 0
-          fi
           git add ical/
-          git commit -m "chore: sync iCal feeds [skip ci]"
-          git push
+          if git diff --cached --quiet; then
+            echo "No changes."
+          else
+            git commit -m "chore: sync iCal feeds [skip ci]"
+            git push
+          fi
+
+      - name: Email alert on blocked wipe
+        if: always() && steps.sync.outputs.wipe == '1'
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: '⚠️ Villa Atlantic: calendar wipe BLOCKED — live site kept last-good'
+          to: ${{ vars.ALERT_EMAIL }}
+          from: Villa Atlantic Sync <${{ secrets.MAIL_USERNAME }}>
+          body: ${{ steps.sync.outputs.alert }}
+
+      - name: Fail run if a wipe was blocked
+        if: always() && steps.sync.outputs.wipe == '1'
+        run: |
+          echo "::error::A calendar wipe was blocked; the live site kept its last-good bookings. See the emailed alert."
+          exit 1
