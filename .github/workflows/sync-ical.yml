@@ -35,6 +35,27 @@ jobs:
           WIPE=0
           : > ical/.wipe_alert.txt
 
+          # Emit the step outputs on EXIT — including an abnormal abort (a feed's
+          # curl 404s, a script raises) part-way through the loop. Writing wipe=
+          # only after the loop would, on such an abort, leave it unset and
+          # silently skip the alert/fail steps for a wipe already detected on the
+          # other feed. The trap preserves whatever WIPE/alert had accumulated.
+          emit_outputs() {
+            local rc=$?
+            echo "wipe=$WIPE" >> "$GITHUB_OUTPUT"
+            if [ "$WIPE" = "1" ]; then
+              { echo "Run: $RUN_URL"; echo
+                echo "Live site untouched — it still shows the last-good bookings."
+                echo "If this clear was intentional, re-run this workflow (Actions ->"
+                echo "Sync iCal feeds -> Run workflow) with confirm_wipe_apt set to the"
+                echo "name of the cleared calendar (e.g. cliffs) to accept that one only."
+              } >> ical/.wipe_alert.txt
+              { echo 'alert<<EOF_ALERT'; cat ical/.wipe_alert.txt; echo 'EOF_ALERT'; } >> "$GITHUB_OUTPUT"
+            fi
+            exit "$rc"
+          }
+          trap emit_outputs EXIT
+
           for apt in "${!FEEDS[@]}"; do
             curl -fsS "${FEEDS[$apt]}" -o "ical/$apt.raw.ics"
             python3 scripts/sanitize_ical.py "ical/$apt.raw.ics" "ical/$apt.candidate.ics"
@@ -72,17 +93,7 @@ jobs:
           done
 
           rm -f ical/*.raw.ics ical/*.candidate.ics ical/*.before.ics
-
-          echo "wipe=$WIPE" >> "$GITHUB_OUTPUT"
-          if [ "$WIPE" = "1" ]; then
-            { echo "Run: $RUN_URL"; echo; \
-              echo "Live site untouched — it still shows the last-good bookings."; \
-              echo "If this clear was intentional, re-run this workflow (Actions ->"; \
-              echo "Sync iCal feeds -> Run workflow) with confirm_wipe_apt set to the"; \
-              echo "name of the cleared calendar (e.g. cliffs) to accept that one only."; \
-            } >> ical/.wipe_alert.txt
-            { echo 'alert<<EOF_ALERT'; cat ical/.wipe_alert.txt; echo 'EOF_ALERT'; } >> "$GITHUB_OUTPUT"
-          fi
+          # Outputs (wipe= and the alert) are emitted by the EXIT trap above.
 
       - name: Commit if changed
         run: |

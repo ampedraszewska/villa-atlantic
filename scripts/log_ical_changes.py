@@ -95,7 +95,16 @@ def diff_events(before_text: str, after_text: str, raw_text: str) -> list[dict]:
 
     for uid in before.keys() & after.keys():
         b, a = before[uid], after[uid]
-        if (b["start"], b["end"]) != (a["start"], a["end"]):
+        # A timed booking's wall-clock value lives in start/end and its zone in
+        # start_tzid/end_tzid, so a timezone-only edit (same clock, new TZID)
+        # leaves start/end unchanged. Compare the zone too, else the move goes
+        # unrecorded and the ledger keeps the stale zone.
+        if (b["start"], b["end"], b["start_tzid"], b["end_tzid"]) != (
+            a["start"],
+            a["end"],
+            a["start_tzid"],
+            a["end_tzid"],
+        ):
             meta = raw.get(uid, {})
             records.append(
                 {

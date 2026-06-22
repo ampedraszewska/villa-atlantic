@@ -64,6 +64,26 @@ def test_modified_record_has_prev_and_new():
     assert r["last_modified"] == "20260617T120000Z"
 
 
+def _timed(uid: str, start: str, end: str, tzid: str) -> str:
+    return (
+        f"BEGIN:VEVENT\r\nDTSTART;TZID={tzid}:{start}\r\n"
+        f"DTEND;TZID={tzid}:{end}\r\nUID:{uid}\r\nSUMMARY:Booked\r\nTRANSP:OPAQUE\r\nEND:VEVENT\r\n"
+    )
+
+
+def test_timezone_only_change_is_recorded():
+    """A timed booking re-zoned without moving its wall clock has identical
+    start/end strings; the move must still be diffed (via the TZID) so the
+    ledger doesn't keep the stale zone."""
+    before = _cal(_timed("z@g", "20260713T100000", "20260713T120000", "Europe/Warsaw"))
+    after = _cal(_timed("z@g", "20260713T100000", "20260713T120000", "Atlantic/Canary"))
+    recs = diff_events(before, after, after)
+    assert len(recs) == 1
+    r = recs[0]
+    assert r["action"] == "modified"
+    assert r["start_tzid"] == "Atlantic/Canary"
+
+
 def test_no_change_yields_no_records():
     feed = _cal(_sanitized("a@g", "20260713", "20260722"))
     assert diff_events(feed, feed, feed) == []
