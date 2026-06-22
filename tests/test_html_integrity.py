@@ -133,11 +133,13 @@ def test_og_url_matches_cname(soup: BeautifulSoup, cname_domain: str):
 
 # ---------------------------------------------------------------------------
 # Language parity: every element with data-lang="en" must have a counterpart
-# with data-lang="pl" in the same parent (and vice versa).
+# with data-lang="pl" AND data-lang="es" in the same parent (all three equal).
 # ---------------------------------------------------------------------------
 
+LANGS = ("en", "pl", "es")
 
-def test_every_en_element_has_pl_counterpart_in_same_parent(
+
+def test_every_en_element_has_pl_and_es_counterpart_in_same_parent(
     soup: BeautifulSoup,
 ):
     offenders: list[str] = []
@@ -150,9 +152,8 @@ def test_every_en_element_has_pl_counterpart_in_same_parent(
         bucket[lang] += 1
 
     for parent_id, counts in parents_with_lang.items():
-        en = counts.get("en", 0)
-        pl = counts.get("pl", 0)
-        if en != pl:
+        per_lang = {lang: counts.get(lang, 0) for lang in LANGS}
+        if len(set(per_lang.values())) != 1:
             # Find the parent back for a useful error message.
             parent = next(
                 (
@@ -163,11 +164,12 @@ def test_every_en_element_has_pl_counterpart_in_same_parent(
                 None,
             )
             tag_name = getattr(parent, "name", "?")
-            offenders.append(f"<{tag_name}> has en={en} pl={pl} data-lang children")
+            shape = " ".join(f"{lang}={per_lang[lang]}" for lang in LANGS)
+            offenders.append(f"<{tag_name}> has {shape} data-lang children")
 
     assert not offenders, (
-        "language-parity mismatch (each element with data-lang=en needs "
-        "a data-lang=pl sibling in the same parent):\n  " + "\n  ".join(offenders)
+        "language-parity mismatch (each element with data-lang=en needs a "
+        "data-lang=pl AND data-lang=es sibling in the same parent):\n  " + "\n  ".join(offenders)
     )
 
 
@@ -259,3 +261,52 @@ def test_ical_js_peer_dep_is_loaded_before_icalendar_plugin(html_text: str):
         "ical.js must be loaded BEFORE @fullcalendar/icalendar — "
         "otherwise the plugin silently drops all format:'ics' sources"
     )
+
+
+# ---------------------------------------------------------------------------
+# Spanish (ES) language support: pricing labels, calendar locale packs, and the
+# SUPPORTED constants in both the head pre-paint script and the main script.
+# ---------------------------------------------------------------------------
+
+
+def test_pricing_data_labels_trilingual(soup: BeautifulSoup):
+    """Every pricing cell with a data-label-en must also carry data-label-pl
+    and data-label-es so the mobile stacked-table headers exist in all three
+    languages (the setLang `[data-label-${l}]` loop relies on parity)."""
+    cells = soup.find_all(attrs={"data-label-en": True})
+    assert cells, "no data-label-en cells found — pricing table markup changed?"
+    offenders = [
+        str(c.get("data-label-en"))
+        for c in cells
+        if not c.get("data-label-pl") or not c.get("data-label-es")
+    ]
+    assert not offenders, f"pricing cells missing data-label-pl/es: {offenders}"
+
+
+def test_fullcalendar_locale_packs_loaded(html_text: str):
+    """The pl + es month/weekday/button text comes from FullCalendar locale
+    packs that ship separately from the global bundle. They MUST be loaded from
+    @fullcalendar/core (the intuitive fullcalendar@6.1.15/locales/* path 404s,
+    which silently leaves the calendar English-only)."""
+    for lang in ("pl", "es"):
+        url = f"@fullcalendar/core@6.1.15/locales/{lang}.global.min.js"
+        assert url in html_text, f"missing FullCalendar locale pack: {url}"
+    # Negative guard against the 404 CDN path that ships no locales. Matched in
+    # its `npm/<pkg>` URL form so it pins the actual loadScript footgun without
+    # tripping on the @fullcalendar/core URL or an explanatory code comment
+    # (the good path is `npm/@fullcalendar/core@...`, never `npm/fullcalendar@...`).
+    assert "npm/fullcalendar@6.1.15/locales/" not in html_text, (
+        "fullcalendar@6.1.15/locales/* returns 404 and ships no locale packs — "
+        "use @fullcalendar/core@6.1.15/locales/* instead"
+    )
+
+
+def test_supported_langs_include_es(html_text: str):
+    """Both SUPPORTED arrays (head pre-paint script + main script) must include
+    'es', otherwise the language is unreachable (auto-detect + persistence both
+    gate on SUPPORTED)."""
+    decls = re.findall(r"SUPPORTED\s*=\s*\[([^\]]*)\]", html_text)
+    assert len(decls) == 2, f"expected two SUPPORTED declarations, got {len(decls)}: {decls}"
+    for body in decls:
+        for lang in ("en", "pl", "es"):
+            assert f"'{lang}'" in body, f"SUPPORTED is missing '{lang}': [{body}]"
