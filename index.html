@@ -3,9 +3,9 @@
   <head>
     <script>
       // Run synchronously in <head> to set language class before first paint (no flash of wrong lang).
-      // To add Spanish: add 'es' to SUPPORTED, add a matching data-lang="es" CSS rule, and add a button.
+      // Keep SUPPORTED in sync with the main script's SUPPORTED constant.
       (function () {
-        var SUPPORTED = ['en', 'pl'];
+        var SUPPORTED = ['en', 'pl', 'es'];
         var DEFAULT_LANG = 'en';
         var stored = null;
         try {
@@ -204,10 +204,10 @@
         margin-bottom: 0.5rem;
       }
 
-      /* Hide content whose language doesn't match the current <html> class.
-     To add Spanish: add `html:not(.lang-es) [data-lang="es"]` to this list. */
+      /* Hide content whose language doesn't match the current <html> class. */
       html:not(.lang-en) [data-lang='en'],
-      html:not(.lang-pl) [data-lang='pl'] {
+      html:not(.lang-pl) [data-lang='pl'],
+      html:not(.lang-es) [data-lang='es'] {
         display: none !important;
       }
 
@@ -1477,14 +1477,21 @@
             >Apartments</a
           ><a href="#apartments" data-track="nav" data-track-id="nav-apartments" data-lang="pl"
             >Apartamenty</a
+          ><a href="#apartments" data-track="nav" data-track-id="nav-apartments" data-lang="es"
+            >Apartamentos</a
           >
           <a href="#location" data-track="nav" data-track-id="nav-location" data-lang="en"
             >Location</a
           ><a href="#location" data-track="nav" data-track-id="nav-location" data-lang="pl"
             >Lokalizacja</a
+          ><a href="#location" data-track="nav" data-track-id="nav-location" data-lang="es"
+            >Ubicación</a
           >
           <a href="#pricing" data-track="nav" data-track-id="nav-pricing" data-lang="en">Pricing</a
-          ><a href="#pricing" data-track="nav" data-track-id="nav-pricing" data-lang="pl">Ceny</a>
+          ><a href="#pricing" data-track="nav" data-track-id="nav-pricing" data-lang="pl">Ceny</a
+          ><a href="#pricing" data-track="nav" data-track-id="nav-pricing" data-lang="es"
+            >Precios</a
+          >
           <a
             href="#calendar-section"
             data-track="nav"
@@ -1497,10 +1504,17 @@
             data-track-id="nav-availability"
             data-lang="pl"
             >Dostępność</a
+          ><a
+            href="#calendar-section"
+            data-track="nav"
+            data-track-id="nav-availability"
+            data-lang="es"
+            >Disponibilidad</a
           >
           <div class="lang-switch">
             <button type="button" data-set-lang="pl">PL</button>
             <button type="button" data-set-lang="en">EN</button>
+            <button type="button" data-set-lang="es">ES</button>
           </div>
           <a
             href="#contact"
@@ -1516,6 +1530,13 @@
             data-track-id="nav-book"
             data-lang="pl"
             >Rezerwuj</a
+          ><a
+            href="#contact"
+            class="nav-cta"
+            data-track="cta"
+            data-track-id="nav-book"
+            data-lang="es"
+            >Reservar</a
           >
         </div>
       </div>
@@ -1549,12 +1570,21 @@
         data-track-id="hero-badge"
         data-lang="pl"
         >🌐 1 Gb/s · Praca zdalna</a
+      ><a
+        href="#remote-work"
+        class="hero-badge"
+        data-track="cta"
+        data-track-id="hero-badge"
+        data-lang="es"
+        >🌐 1 Gb/s · Listo para teletrabajo</a
       >
       <div class="hero-content">
         <div class="hero-tag" data-lang="en">Puerto de Santiago · Tenerife</div>
         <div class="hero-tag" data-lang="pl">Puerto de Santiago · Teneryfa</div>
+        <div class="hero-tag" data-lang="es">Puerto de Santiago · Tenerife</div>
         <h1 data-lang="en">Your oceanfront home in the south of Tenerife</h1>
         <h1 data-lang="pl">Twój dom nad oceanem na południu Teneryfy</h1>
+        <h1 data-lang="es">Tu casa frente al mar en el sur de Tenerife</h1>
         <p class="hero-sub" data-lang="en">
           Beachfront villa with pool and private garden. Atlantic in every window. Book the whole
           house, the upper apartment (Cliffs) or the lower one (Gardens).
@@ -1562,6 +1592,10 @@
         <p class="hero-sub" data-lang="pl">
           Willa nad oceanem, z basenem i prywatnym ogrodem. Atlantyk widać z każdego okna. Wynajmij
           cały dom, górny apartament (Cliffs) albo dolny (Gardens).
+        </p>
+        <p class="hero-sub" data-lang="es">
+          Villa frente al mar con piscina y jardín privado. El Atlántico desde cada ventana. Reserva
+          la casa entera, el apartamento superior (Cliffs) o el inferior (Gardens).
         </p>
         <div class="hero-ctas">
           <a
@@ -1579,6 +1613,13 @@
             data-track-id="hero-check-availability"
             data-lang="pl"
             >Sprawdź dostępność</a
+          ><a
+            href="#calendar-section"
+            class="btn btn-primary"
+            data-track="cta"
+            data-track-id="hero-check-availability"
+            data-lang="es"
+            >Consultar disponibilidad</a
           >
           <a
             href="#apartments"
@@ -1595,6 +1636,13 @@
             data-track-id="hero-see-apartments"
             data-lang="pl"
             >Zobacz apartamenty</a
+          ><a
+            href="#apartments"
+            class="btn btn-secondary"
+            data-track="cta"
+            data-track-id="hero-see-apartments"
+            data-lang="es"
+            >Ver apartamentos</a
           >
         </div>
       </div>
@@ -1605,8 +1653,10 @@
       <div class="container">
         <div class="section-eyebrow" data-lang="en">Three ways to stay</div>
         <div class="section-eyebrow" data-lang="pl">Trzy opcje wynajmu</div>
+        <div class="section-eyebrow" data-lang="es">Tres formas de alojarte</div>
         <h2 data-lang="en">One villa, three ways to enjoy it</h2>
         <h2 data-lang="pl">Jedna willa, trzy opcje pobytu</h2>
+        <h2 data-lang="es">Una villa, tres formas de disfrutarla</h2>
         <p class="section-lead" data-lang="en">
           The villa is made up of two fully independent apartments with separate entrances. Rent the
           whole property for a large group, or book just the floor that fits you.
@@ -1614,6 +1664,11 @@
         <p class="section-lead" data-lang="pl">
           Willa składa się z dwóch niezależnych apartamentów z osobnymi wejściami. Wynajmij cały dom
           na większą grupę lub zarezerwuj jedno piętro.
+        </p>
+        <p class="section-lead" data-lang="es">
+          La villa se compone de dos apartamentos totalmente independientes con entradas separadas.
+          Alquila la propiedad entera para un grupo grande, o reserva solo la planta que mejor te
+          encaje.
         </p>
 
         <div class="options-grid">
@@ -1623,17 +1678,25 @@
               decoding="async"
               src="images/house/outside/Pool1.avif"
               alt="Villa Atlantic whole villa with pool"
+              data-alt-en="Villa Atlantic whole villa with pool"
+              data-alt-pl="Villa Atlantic — cała willa z basenem"
+              data-alt-es="Villa Atlantic — villa entera con piscina"
             />
             <div class="option-body">
               <h3>
                 <span data-lang="en">Whole Villa Atlantic</span
-                ><span data-lang="pl">Cała Villa Atlantic</span>
+                ><span data-lang="pl">Cała Villa Atlantic</span
+                ><span data-lang="es">Villa Atlantic entera</span>
               </h3>
               <div class="option-meta" data-lang="en">Up to 11 guests · house to yourselves</div>
               <div class="option-meta" data-lang="pl">Do 11 osób · Cały dom na wyłączność</div>
+              <div class="option-meta" data-lang="es">
+                Hasta 11 huéspedes · casa para vosotros solos
+              </div>
               <div class="option-price">
                 <span data-lang="en">from <strong>€270</strong> <small>/ night</small></span>
-                <span data-lang="pl">od <strong>€270</strong> <small>/ noc</small></span>
+                <span data-lang="pl">od <strong>€270</strong> <small>/ noc</small></span
+                ><span data-lang="es">desde <strong>€270</strong> <small>/ noche</small></span>
               </div>
               <ul class="option-features" data-lang="en">
                 <li>Both apartments combined</li>
@@ -1645,6 +1708,11 @@
                 <li>Prywatny basen + taras + ogród</li>
                 <li>5 sypialni + 2 kuchnie</li>
               </ul>
+              <ul class="option-features" data-lang="es">
+                <li>Los dos apartamentos juntos</li>
+                <li>Piscina privada + terraza + jardín</li>
+                <li>5 dormitorios + 2 cocinas</li>
+              </ul>
               <a
                 href="#pricing"
                 class="btn btn-ocean"
@@ -1660,6 +1728,13 @@
                 data-track-id="option-whole"
                 data-lang="pl"
                 >Szczegóły</a
+              ><a
+                href="#pricing"
+                class="btn btn-ocean"
+                data-track="cta"
+                data-track-id="option-whole"
+                data-lang="es"
+                >Ver detalles</a
               >
             </div>
           </div>
@@ -1670,14 +1745,21 @@
               decoding="async"
               src="images/house/upstairs/Taras1.JPG"
               alt="Villa Atlantic Cliffs — upper apartment terrace"
+              data-alt-en="Villa Atlantic Cliffs — upper apartment terrace"
+              data-alt-pl="Villa Atlantic Cliffs — taras górnego apartamentu"
+              data-alt-es="Villa Atlantic Cliffs — terraza del apartamento superior"
             />
             <div class="option-body">
               <h3>Villa Atlantic Cliffs</h3>
               <div class="option-meta" data-lang="en">Upper · up to 5 guests · ocean views</div>
               <div class="option-meta" data-lang="pl">Góra · do 5 osób · widok na ocean</div>
+              <div class="option-meta" data-lang="es">
+                Superior · hasta 5 huéspedes · vistas al mar
+              </div>
               <div class="option-price">
                 <span data-lang="en">from <strong>€150</strong> <small>/ night</small></span>
-                <span data-lang="pl">od <strong>€150</strong> <small>/ noc</small></span>
+                <span data-lang="pl">od <strong>€150</strong> <small>/ noc</small></span
+                ><span data-lang="es">desde <strong>€150</strong> <small>/ noche</small></span>
               </div>
               <ul class="option-features" data-lang="en">
                 <li>2 bedrooms with double beds + 1 with single bed</li>
@@ -1689,6 +1771,11 @@
                 <li>Taras z widokiem na ocean</li>
                 <li>Salon i oddzielna kuchnia ze stołem jadalnym</li>
               </ul>
+              <ul class="option-features" data-lang="es">
+                <li>2 dormitorios con camas dobles + 1 con cama individual</li>
+                <li>Terraza con vistas al mar</li>
+                <li>Salón y cocina independiente con mesa de comedor</li>
+              </ul>
               <a
                 href="#apt-cliffs"
                 class="btn btn-ocean"
@@ -1704,6 +1791,13 @@
                 data-track-id="option-cliffs"
                 data-lang="pl"
                 >Szczegóły</a
+              ><a
+                href="#apt-cliffs"
+                class="btn btn-ocean"
+                data-track="cta"
+                data-track-id="option-cliffs"
+                data-lang="es"
+                >Ver detalles</a
               >
             </div>
           </div>
@@ -1714,14 +1808,21 @@
               decoding="async"
               src="images/house/downstairs/cb3f5941-008f-4a5f-8418-ad0a0f3929e1.JPG"
               alt="Villa Atlantic Gardens — lower apartment"
+              data-alt-en="Villa Atlantic Gardens — lower apartment"
+              data-alt-pl="Villa Atlantic Gardens — dolny apartament"
+              data-alt-es="Villa Atlantic Gardens — apartamento inferior"
             />
             <div class="option-body">
               <h3>Villa Atlantic Gardens</h3>
               <div class="option-meta" data-lang="en">Lower · up to 6 guests · private garden</div>
               <div class="option-meta" data-lang="pl">Dół · do 6 osób · prywatny ogród</div>
+              <div class="option-meta" data-lang="es">
+                Inferior · hasta 6 huéspedes · jardín privado
+              </div>
               <div class="option-price">
                 <span data-lang="en">from <strong>€120</strong> <small>/ night</small></span>
-                <span data-lang="pl">od <strong>€120</strong> <small>/ noc</small></span>
+                <span data-lang="pl">od <strong>€120</strong> <small>/ noc</small></span
+                ><span data-lang="es">desde <strong>€120</strong> <small>/ noche</small></span>
               </div>
               <ul class="option-features" data-lang="en">
                 <li>2 bedrooms with double beds + expandable sofa</li>
@@ -1733,6 +1834,11 @@
                 <li>Prywatny ogród, bezpośredni dostęp do basenu</li>
                 <li>Salon z otwartą kuchnią</li>
               </ul>
+              <ul class="option-features" data-lang="es">
+                <li>2 dormitorios con camas dobles + sofá cama</li>
+                <li>Jardín privado, acceso directo a la piscina</li>
+                <li>Salón con cocina abierta</li>
+              </ul>
               <a
                 href="#apt-gardens"
                 class="btn btn-ocean"
@@ -1748,6 +1854,13 @@
                 data-track-id="option-gardens"
                 data-lang="pl"
                 >Szczegóły</a
+              ><a
+                href="#apt-gardens"
+                class="btn btn-ocean"
+                data-track="cta"
+                data-track-id="option-gardens"
+                data-lang="es"
+                >Ver detalles</a
               >
             </div>
           </div>
@@ -1762,8 +1875,10 @@
           <div class="about-text">
             <div class="section-eyebrow" data-lang="en">About Villa Atlantic</div>
             <div class="section-eyebrow" data-lang="pl">O Villa Atlantic</div>
+            <div class="section-eyebrow" data-lang="es">Sobre Villa Atlantic</div>
             <h2 data-lang="en">Unforgettable holidays, just steps from the Atlantic</h2>
             <h2 data-lang="pl">Niezapomniane wakacje o krok od Atlantyku</h2>
+            <h2 data-lang="es">Vacaciones inolvidables, a un paso del Atlántico</h2>
 
             <div data-lang="en">
               <p>
@@ -1799,6 +1914,24 @@
                 oceanu.
               </p>
             </div>
+            <div data-lang="es">
+              <p>
+                Disfruta de unas vacaciones inolvidables en nuestra preciosa villa frente al mar en
+                Puerto de Santiago, una de las zonas más tranquilas y soleadas del sur de Tenerife.
+              </p>
+              <p>
+                La villa ofrece <strong>impresionantes vistas al océano Atlántico</strong>, donde
+                podrás relajarte con el sonido de las olas y disfrutar de puestas de sol
+                espectaculares desde la terraza privada, con acceso directo a la piscina y a la zona
+                de descanso.
+              </p>
+              <p>
+                La propiedad está cerca de restaurantes, supermercados y los famosos charcos
+                naturales de la zona, lo que la convierte en una base ideal para explorar el sur de
+                la isla. Un lugar perfecto para parejas, familias, jubilados o viajeros que buscan
+                tranquilidad, sol y el auténtico encanto del océano.
+              </p>
+            </div>
           </div>
           <div class="about-img">
             <img
@@ -1806,6 +1939,9 @@
               decoding="async"
               src="images/house/outside/Cliffs.JPG"
               alt="Villa Atlantic with ocean and cliffs view"
+              data-alt-en="Villa Atlantic with ocean and cliffs view"
+              data-alt-pl="Villa Atlantic z widokiem na ocean i klify"
+              data-alt-es="Villa Atlantic con vistas al océano y los acantilados"
             />
           </div>
         </div>
@@ -1817,49 +1953,59 @@
       <div class="container">
         <div class="section-eyebrow" data-lang="en">What's included</div>
         <div class="section-eyebrow" data-lang="pl">Co jest w cenie</div>
+        <div class="section-eyebrow" data-lang="es">Qué incluye</div>
         <h2 data-lang="en">Everything you need for a long stay</h2>
         <h2 data-lang="pl">Wszystko, czego potrzebujesz na dłuższy pobyt</h2>
+        <h2 data-lang="es">Todo lo que necesitas para una estancia larga</h2>
 
         <div class="amenities-grid" style="margin-top: 2rem">
           <div class="amenity">
             <div class="amenity-icon">🌊</div>
             <div class="amenity-label" data-lang="en">Oceanfront location</div>
             <div class="amenity-label" data-lang="pl">Lokalizacja nad oceanem</div>
+            <div class="amenity-label" data-lang="es">Ubicación frente al mar</div>
           </div>
           <div class="amenity">
             <div class="amenity-icon">🏊</div>
             <div class="amenity-label" data-lang="en">Private pool</div>
             <div class="amenity-label" data-lang="pl">Prywatny basen</div>
+            <div class="amenity-label" data-lang="es">Piscina privada</div>
           </div>
           <div class="amenity">
             <div class="amenity-icon">🌿</div>
             <div class="amenity-label" data-lang="en">Private garden</div>
             <div class="amenity-label" data-lang="pl">Prywatny ogród</div>
+            <div class="amenity-label" data-lang="es">Jardín privado</div>
           </div>
           <div class="amenity">
             <div class="amenity-icon">☀️</div>
             <div class="amenity-label" data-lang="en">Panoramic terrace</div>
             <div class="amenity-label" data-lang="pl">Panoramiczny taras</div>
+            <div class="amenity-label" data-lang="es">Terraza panorámica</div>
           </div>
           <div class="amenity">
             <div class="amenity-icon">📶</div>
             <div class="amenity-label" data-lang="en">High-speed Wi-Fi (1GB/sec)</div>
             <div class="amenity-label" data-lang="pl">Szybki internet (1GB/sec)</div>
+            <div class="amenity-label" data-lang="es">Wi-Fi de alta velocidad (1GB/s)</div>
           </div>
           <div class="amenity">
             <div class="amenity-icon">🍳</div>
             <div class="amenity-label" data-lang="en">Fully equipped kitchens</div>
             <div class="amenity-label" data-lang="pl">Wyposażone kuchnie</div>
+            <div class="amenity-label" data-lang="es">Cocinas totalmente equipadas</div>
           </div>
           <div class="amenity">
             <div class="amenity-icon">🧺</div>
             <div class="amenity-label" data-lang="en">Washing machine</div>
             <div class="amenity-label" data-lang="pl">Pralka</div>
+            <div class="amenity-label" data-lang="es">Lavadora</div>
           </div>
           <div class="amenity">
             <div class="amenity-icon">🏝️</div>
             <div class="amenity-label" data-lang="en">Beach 5 min walk</div>
             <div class="amenity-label" data-lang="pl">5 min do plaży</div>
+            <div class="amenity-label" data-lang="es">Playa a 5 min a pie</div>
           </div>
         </div>
       </div>
@@ -1870,8 +2016,10 @@
       <div class="container">
         <div class="section-eyebrow" data-lang="en">The apartments</div>
         <div class="section-eyebrow" data-lang="pl">Apartamenty</div>
+        <div class="section-eyebrow" data-lang="es">Los apartamentos</div>
         <h2 data-lang="en">One villa, two independent apartments</h2>
         <h2 data-lang="pl">Jedna villa, dwa niezależne apartamenty</h2>
+        <h2 data-lang="es">Una villa, dos apartamentos independientes</h2>
 
         <div class="apt-tabs" style="margin-top: 2rem">
           <button class="apt-tab active" data-apt="cliffs">Villa Atlantic Cliffs</button>
@@ -1901,6 +2049,15 @@
                   "
                   data-lang="pl"
                   >· górne piętro</span
+                ><span
+                  style="
+                    font-size: 1rem;
+                    color: var(--text-muted);
+                    font-family: 'Space Grotesk', sans-serif;
+                    font-weight: 400;
+                  "
+                  data-lang="es"
+                  >· planta superior</span
                 >
               </h3>
               <p data-lang="en">
@@ -1913,37 +2070,49 @@
                 widokiem na morze — idealny na śniadanie w słońcu lub drinka o zachodzie. Trzy
                 sypialnie komfortowo mieszczą do 5 osób.
               </p>
+              <p data-lang="es">
+                El apartamento superior es luminoso, amplio y se organiza en torno a una espaciosa
+                terraza panorámica con vistas al mar, ideal para desayunar al sol o tomar una copa
+                al atardecer. Tres dormitorios acogen cómodamente hasta 5 huéspedes.
+              </p>
               <div class="apt-specs">
                 <div>
                   <div class="apt-spec-label" data-lang="en">Guests</div>
                   <div class="apt-spec-label" data-lang="pl">Goście</div>
+                  <div class="apt-spec-label" data-lang="es">Huéspedes</div>
                   <div class="apt-spec-value">5</div>
                 </div>
                 <div>
                   <div class="apt-spec-label" data-lang="en">Bathrooms</div>
                   <div class="apt-spec-label" data-lang="pl">Łazienki</div>
+                  <div class="apt-spec-label" data-lang="es">Baños</div>
                   <div class="apt-spec-value">
                     <span data-lang="en">1 + separate toilet</span
-                    ><span data-lang="pl">1 + osobne WC</span>
+                    ><span data-lang="pl">1 + osobne WC</span
+                    ><span data-lang="es">1 + aseo independiente</span>
                   </div>
                 </div>
                 <div>
                   <div class="apt-spec-label" data-lang="en">Area</div>
                   <div class="apt-spec-label" data-lang="pl">Powierzchnia</div>
+                  <div class="apt-spec-label" data-lang="es">Superficie</div>
                   <div class="apt-spec-value">109 m²</div>
                 </div>
                 <div>
                   <div class="apt-spec-label" data-lang="en">Appliances</div>
                   <div class="apt-spec-label" data-lang="pl">AGD</div>
+                  <div class="apt-spec-label" data-lang="es">Electrodomésticos</div>
                   <div class="apt-spec-value">
                     <span data-lang="en">Washing machine, dishwasher</span
-                    ><span data-lang="pl">Pralka, zmywarka</span>
+                    ><span data-lang="pl">Pralka, zmywarka</span
+                    ><span data-lang="es">Lavadora, lavavajillas</span>
                   </div>
                 </div>
               </div>
               <div class="apt-bedrooms">
                 <div class="apt-spec-label" data-lang="en">Bedrooms</div>
                 <div class="apt-spec-label" data-lang="pl">Sypialnie</div>
+                <div class="apt-spec-label" data-lang="es">Dormitorios</div>
                 <ul data-lang="en">
                   <li>Bedroom with double bed and spacious wardrobe</li>
                   <li>Bedroom with double bed and spacious wardrobe</li>
@@ -1953,6 +2122,11 @@
                   <li>Sypialnia z podwójnym łóżkiem i pojemną szafą</li>
                   <li>Sypialnia z podwójnym łóżkiem i pojemną szafą</li>
                   <li>Sypialnia z pojedynczym łóżkiem, szafą i biurkiem do pracy</li>
+                </ul>
+                <ul data-lang="es">
+                  <li>Dormitorio con cama doble y amplio armario</li>
+                  <li>Dormitorio con cama doble y amplio armario</li>
+                  <li>Dormitorio con cama individual, armario y escritorio de trabajo</li>
                 </ul>
               </div>
             </div>
@@ -2088,6 +2262,15 @@
                   "
                   data-lang="pl"
                   >· dolne piętro</span
+                ><span
+                  style="
+                    font-size: 1rem;
+                    color: var(--text-muted);
+                    font-family: 'Space Grotesk', sans-serif;
+                    font-weight: 400;
+                  "
+                  data-lang="es"
+                  >· planta inferior</span
                 >
               </h3>
               <p data-lang="en">
@@ -2100,34 +2283,46 @@
                 miejsce do relaksu, czytania i cieszenia się ciepłym klimatem Teneryfy przez cały
                 rok. Dwie sypialnie plus rozkładana sofa mieszczą do 6 osób.
               </p>
+              <p data-lang="es">
+                El apartamento inferior se abre a un encantador jardín privado y da acceso directo a
+                la piscina, perfecto para relajarse, leer o disfrutar del cálido clima de Tenerife
+                durante todo el año. Dos dormitorios más un sofá cama acogen cómodamente hasta 6
+                huéspedes.
+              </p>
               <div class="apt-specs">
                 <div>
                   <div class="apt-spec-label" data-lang="en">Guests</div>
                   <div class="apt-spec-label" data-lang="pl">Goście</div>
+                  <div class="apt-spec-label" data-lang="es">Huéspedes</div>
                   <div class="apt-spec-value">6</div>
                 </div>
                 <div>
                   <div class="apt-spec-label" data-lang="en">Bathrooms</div>
                   <div class="apt-spec-label" data-lang="pl">Łazienki</div>
+                  <div class="apt-spec-label" data-lang="es">Baños</div>
                   <div class="apt-spec-value">1</div>
                 </div>
                 <div>
                   <div class="apt-spec-label" data-lang="en">Area</div>
                   <div class="apt-spec-label" data-lang="pl">Powierzchnia</div>
+                  <div class="apt-spec-label" data-lang="es">Superficie</div>
                   <div class="apt-spec-value">85 m²</div>
                 </div>
                 <div>
                   <div class="apt-spec-label" data-lang="en">Appliances</div>
                   <div class="apt-spec-label" data-lang="pl">AGD</div>
+                  <div class="apt-spec-label" data-lang="es">Electrodomésticos</div>
                   <div class="apt-spec-value">
                     <span data-lang="en">Washing machine, dishwasher</span
-                    ><span data-lang="pl">Pralka, zmywarka</span>
+                    ><span data-lang="pl">Pralka, zmywarka</span
+                    ><span data-lang="es">Lavadora, lavavajillas</span>
                   </div>
                 </div>
               </div>
               <div class="apt-bedrooms">
                 <div class="apt-spec-label" data-lang="en">Bedrooms</div>
                 <div class="apt-spec-label" data-lang="pl">Sypialnie</div>
+                <div class="apt-spec-label" data-lang="es">Dormitorios</div>
                 <ul data-lang="en">
                   <li>Bedroom with double bed and spacious wardrobe</li>
                   <li>Bedroom with double bed, spacious wardrobe and work desk</li>
@@ -2137,6 +2332,11 @@
                   <li>Sypialnia z podwójnym łóżkiem i pojemną szafą</li>
                   <li>Sypialnia z podwójnym łóżkiem, pojemną szafą i biurkiem do pracy</li>
                   <li>Możliwość rozłożenia kanapy w salonie</li>
+                </ul>
+                <ul data-lang="es">
+                  <li>Dormitorio con cama doble y amplio armario</li>
+                  <li>Dormitorio con cama doble, amplio armario y escritorio de trabajo</li>
+                  <li>Sofá cama en el salón</li>
                 </ul>
               </div>
             </div>
@@ -2224,8 +2424,10 @@
       <div class="container">
         <div class="section-eyebrow" data-lang="en">Remote-work setup</div>
         <div class="section-eyebrow" data-lang="pl">Praca zdalna</div>
+        <div class="section-eyebrow" data-lang="es">Equipado para teletrabajo</div>
         <h2 data-lang="en">Built for working remotely</h2>
         <h2 data-lang="pl">Gotowe do pracy zdalnej — dla nomadów</h2>
+        <h2 data-lang="es">Preparada para trabajar en remoto</h2>
 
         <div class="remote-work-grid">
           <div>
@@ -2235,6 +2437,9 @@
             <p class="remote-work-lead" data-lang="pl">
               Szybko, cicho, gotowe do pracy — bez rezygnacji z widoku na ocean.
             </p>
+            <p class="remote-work-lead" data-lang="es">
+              Rápido, silencioso y listo para trabajar, sin renunciar a las vistas al mar.
+            </p>
 
             <ul class="remote-work-features">
               <li>
@@ -2242,12 +2447,16 @@
                 <div class="rw-body">
                   <div class="rw-title" data-lang="en">1 Gb/s fiber</div>
                   <div class="rw-title" data-lang="pl">Światłowód 1 Gb/s</div>
+                  <div class="rw-title" data-lang="es">Fibra de 1 Gb/s</div>
                   <div class="rw-desc" data-lang="en">
                     Wired in the living room. Plenty for video calls and big uploads.
                   </div>
                   <div class="rw-desc" data-lang="pl">
                     WiFi w całym domu, dostęp do kabla ethernet w salonie. Prędkość zoptymalizowana
                     pod rozmowy wideo i duże uploady.
+                  </div>
+                  <div class="rw-desc" data-lang="es">
+                    Cable ethernet en el salón. De sobra para videollamadas y subidas pesadas.
                   </div>
                 </div>
               </li>
@@ -2256,11 +2465,15 @@
                 <div class="rw-body">
                   <div class="rw-title" data-lang="en">Quiet oceanfront</div>
                   <div class="rw-title" data-lang="pl">Cicho, nad oceanem</div>
+                  <div class="rw-title" data-lang="es">Tranquilidad frente al mar</div>
                   <div class="rw-desc" data-lang="en">
                     Just the sound of waves. Clean audio on calls.
                   </div>
                   <div class="rw-desc" data-lang="pl">
                     Tylko szum fal. Czysty dźwięk na rozmowach.
+                  </div>
+                  <div class="rw-desc" data-lang="es">
+                    Solo el sonido de las olas. Audio limpio en las llamadas.
                   </div>
                 </div>
               </li>
@@ -2269,11 +2482,15 @@
                 <div class="rw-body">
                   <div class="rw-title" data-lang="en">Coworking 10 min away</div>
                   <div class="rw-title" data-lang="pl">Coworking 10 min spacerem</div>
+                  <div class="rw-title" data-lang="es">Coworking a 10 min</div>
                   <div class="rw-desc" data-lang="en">
                     Professional space in Los Gigantes, a short walk from the villa.
                   </div>
                   <div class="rw-desc" data-lang="pl">
                     Profesjonalne biuro w Los Gigantes, krótki spacer od willi.
+                  </div>
+                  <div class="rw-desc" data-lang="es">
+                    Espacio profesional en Los Gigantes, a un corto paseo de la villa.
                   </div>
                 </div>
               </li>
@@ -2285,6 +2502,9 @@
               decoding="async"
               src="images/speedtest.jpg"
               alt="Villa Atlantic internet speed test — Movistar WiFi 6, ~800 Mbps down / 450 Mbps up"
+              data-alt-en="Villa Atlantic internet speed test — Movistar WiFi 6, ~800 Mbps down / 450 Mbps up"
+              data-alt-pl="Villa Atlantic — test prędkości internetu — Movistar WiFi 6, ~800 Mb/s pobieranie / 450 Mb/s wysyłanie"
+              data-alt-es="Villa Atlantic — test de velocidad de internet — Movistar WiFi 6, ~800 Mbps de bajada / 450 Mbps de subida"
               onerror="
                 this.style.display = 'none';
                 this.nextElementSibling.nextElementSibling.style.display = 'flex';
@@ -2292,13 +2512,17 @@
             />
             <div class="remote-work-media-caption">
               <span data-lang="en">WiFi test from the bedroom. Living room has wired 1 Gb/s.</span>
-              <span data-lang="pl">Test po WiFi z sypialni. W salonie 1 Gb/s po kablu.</span>
+              <span data-lang="pl">Test po WiFi z sypialni. W salonie 1 Gb/s po kablu.</span
+              ><span data-lang="es"
+                >Test por WiFi desde el dormitorio. El salón tiene 1 Gb/s por cable.</span
+              >
             </div>
             <div class="remote-work-media-placeholder" style="display: none">
               <div>
                 <div style="font-size: 2rem; margin-bottom: 8px">📶</div>
                 <div data-lang="en">Speedtest screenshot coming soon</div>
                 <div data-lang="pl">Zrzut ekranu ze speedtestu wkrótce</div>
+                <div data-lang="es">Captura del test de velocidad próximamente</div>
               </div>
             </div>
           </div>
@@ -2311,8 +2535,10 @@
       <div class="container">
         <div class="section-eyebrow" data-lang="en">Location</div>
         <div class="section-eyebrow" data-lang="pl">Lokalizacja</div>
+        <div class="section-eyebrow" data-lang="es">Ubicación</div>
         <h2 data-lang="en">Puerto de Santiago, south Tenerife</h2>
         <h2 data-lang="pl">Puerto de Santiago, południowa Teneryfa</h2>
+        <h2 data-lang="es">Puerto de Santiago, sur de Tenerife</h2>
 
         <div class="location-grid" style="margin-top: 2rem">
           <div>
@@ -2327,9 +2553,13 @@
                 decoding="async"
                 src="images/location/Location of the house.png"
                 alt="Map showing Villa Atlantic location in Puerto de Santiago, Tenerife"
+                data-alt-en="Map showing Villa Atlantic location in Puerto de Santiago, Tenerife"
+                data-alt-pl="Mapa pokazująca lokalizację Villa Atlantic w Puerto de Santiago na Teneryfie"
+                data-alt-es="Mapa que muestra la ubicación de Villa Atlantic en Puerto de Santiago, Tenerife"
               />
               <span class="location-map-cta" data-lang="en">Open in Google Maps ↗</span>
-              <span class="location-map-cta" data-lang="pl">Otwórz w Google Maps ↗</span>
+              <span class="location-map-cta" data-lang="pl">Otwórz w Google Maps ↗</span
+              ><span class="location-map-cta" data-lang="es">Abrir en Google Maps ↗</span>
             </a>
           </div>
           <div>
@@ -2343,28 +2573,38 @@
               wyspie — z klifami Los Gigantes z jednej strony i urokliwymi wioskami rybackimi w
               pobliżu. Wszystko, czego potrzebujesz, jest w zasięgu spaceru.
             </p>
+            <p data-lang="es" style="color: var(--text-muted); margin-bottom: 1rem">
+              Puerto de Santiago es uno de los rincones más tranquilos y soleados de la isla, con
+              los acantilados de Los Gigantes a un lado y encantadores pueblos pesqueros cerca. Todo
+              lo que necesitas está a poca distancia a pie.
+            </p>
             <div class="distance-group">
               <div class="distance-group-title" data-lang="en">🚶 On foot</div>
               <div class="distance-group-title" data-lang="pl">🚶 Pieszo</div>
+              <div class="distance-group-title" data-lang="es">🚶 A pie</div>
               <ul class="distances">
                 <li>
                   <div class="d-label" data-lang="en">Beach</div>
                   <div class="d-label" data-lang="pl">Plaża</div>
+                  <div class="d-label" data-lang="es">Playa</div>
                   <div class="d-value">4 min</div>
                 </li>
                 <li>
                   <div class="d-label" data-lang="en">Natural pools</div>
                   <div class="d-label" data-lang="pl">Naturalne baseny</div>
+                  <div class="d-label" data-lang="es">Charcos naturales</div>
                   <div class="d-value">5 min</div>
                 </li>
                 <li>
                   <div class="d-label" data-lang="en">Restaurants</div>
                   <div class="d-label" data-lang="pl">Restauracje</div>
+                  <div class="d-label" data-lang="es">Restaurantes</div>
                   <div class="d-value">3 min</div>
                 </li>
                 <li>
                   <div class="d-label" data-lang="en">Supermarket</div>
                   <div class="d-label" data-lang="pl">Supermarket</div>
+                  <div class="d-label" data-lang="es">Supermercado</div>
                   <div class="d-value">3 min</div>
                 </li>
               </ul>
@@ -2372,25 +2612,30 @@
             <div class="distance-group">
               <div class="distance-group-title" data-lang="en">🚗 By car</div>
               <div class="distance-group-title" data-lang="pl">🚗 Samochodem</div>
+              <div class="distance-group-title" data-lang="es">🚗 En coche</div>
               <ul class="distances">
                 <li>
                   <div class="d-label" data-lang="en">Los Gigantes cliffs</div>
                   <div class="d-label" data-lang="pl">Klify Los Gigantes</div>
+                  <div class="d-label" data-lang="es">Acantilados de Los Gigantes</div>
                   <div class="d-value">10 min</div>
                 </li>
                 <li>
                   <div class="d-label" data-lang="en">Tennis courts</div>
                   <div class="d-label" data-lang="pl">Korty tenisowe</div>
+                  <div class="d-label" data-lang="es">Pistas de tenis</div>
                   <div class="d-value">6 min</div>
                 </li>
                 <li>
                   <div class="d-label" data-lang="en">Tenerife South airport</div>
                   <div class="d-label" data-lang="pl">Lotnisko Tenerife South</div>
+                  <div class="d-label" data-lang="es">Aeropuerto Tenerife Sur</div>
                   <div class="d-value">50 min</div>
                 </li>
                 <li>
                   <div class="d-label" data-lang="en">Teide National Park</div>
                   <div class="d-label" data-lang="pl">Park Narodowy Teide</div>
+                  <div class="d-label" data-lang="es">Parque Nacional del Teide</div>
                   <div class="d-value">1h 15</div>
                 </li>
               </ul>
@@ -2405,8 +2650,10 @@
       <div class="container">
         <div class="section-eyebrow" data-lang="en">Gallery</div>
         <div class="section-eyebrow" data-lang="pl">Galeria</div>
+        <div class="section-eyebrow" data-lang="es">Galería</div>
         <h2 data-lang="en">The villa, pool and surroundings</h2>
         <h2 data-lang="pl">Willa, basen i okolica</h2>
+        <h2 data-lang="es">La villa, la piscina y los alrededores</h2>
 
         <div class="gallery-grid" data-gallery="all" style="margin-top: 2rem">
           <div class="tile">
@@ -2532,8 +2779,10 @@
       <div class="container">
         <div class="section-eyebrow" data-lang="en">Pricing</div>
         <div class="section-eyebrow" data-lang="pl">Cennik</div>
+        <div class="section-eyebrow" data-lang="es">Precios</div>
         <h2 data-lang="en">Direct booking prices</h2>
         <h2 data-lang="pl">Ceny w rezerwacji bezpośredniej</h2>
+        <h2 data-lang="es">Precios de reserva directa</h2>
         <p class="section-lead" data-lang="en">
           These prices apply to direct bookings from this website. Booking.com and Airbnb listings
           include platform fees and will be higher.
@@ -2542,91 +2791,127 @@
           Te ceny obowiązują przy rezerwacji bezpośrednio przez stronę. Oferty na Booking.com i
           Airbnb zawierają prowizje i są droższe.
         </p>
+        <p class="section-lead" data-lang="es">
+          Estos precios se aplican a las reservas directas desde esta web. Los anuncios de
+          Booking.com y Airbnb incluyen comisiones de plataforma y son más caros.
+        </p>
 
         <table class="pricing-table">
           <thead>
             <tr>
               <th data-lang="en">Option</th>
               <th data-lang="pl">Opcja</th>
+              <th data-lang="es">Opción</th>
               <th data-lang="en">March–June (low)</th>
               <th data-lang="pl">Marzec–Czerwiec (niski)</th>
+              <th data-lang="es">Marzo–Junio (baja)</th>
               <th data-lang="en">July–February (high)</th>
               <th data-lang="pl">Lipiec–Luty (wysoki)</th>
+              <th data-lang="es">Julio–Febrero (alta)</th>
               <th data-lang="en">Cleaning fee</th>
               <th data-lang="pl">Opłata za sprzątanie</th>
+              <th data-lang="es">Tarifa de limpieza</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td data-label-en="Option" data-label-pl="Opcja">
+              <td data-label-en="Option" data-label-pl="Opcja" data-label-es="Opción">
                 <div class="opt-name">
                   Villa Atlantic Gardens
                   <small data-lang="en">Lower floor · up to 6 guests</small>
-                  <small data-lang="pl">Dolne piętro · do 6 osób</small>
+                  <small data-lang="pl">Dolne piętro · do 6 osób</small
+                  ><small data-lang="es">Planta inferior · hasta 6 huéspedes</small>
                 </div>
               </td>
-              <td data-label-en="March–June" data-label-pl="Marzec–Czerwiec">
+              <td
+                data-label-en="March–June"
+                data-label-pl="Marzec–Czerwiec"
+                data-label-es="Marzo–Junio"
+              >
                 <span class="price"
-                  >€120<small data-lang="en"> / night</small
-                  ><small data-lang="pl"> / noc</small></span
+                  >€120<small data-lang="en"> / night</small><small data-lang="pl"> / noc</small
+                  ><small data-lang="es"> / noche</small></span
                 >
               </td>
-              <td data-label-en="July–February" data-label-pl="Lipiec–Luty">
+              <td
+                data-label-en="July–February"
+                data-label-pl="Lipiec–Luty"
+                data-label-es="Julio–Febrero"
+              >
                 <span class="price"
-                  >€130<small data-lang="en"> / night</small
-                  ><small data-lang="pl"> / noc</small></span
+                  >€130<small data-lang="en"> / night</small><small data-lang="pl"> / noc</small
+                  ><small data-lang="es"> / noche</small></span
                 >
               </td>
-              <td data-label-en="Cleaning" data-label-pl="Sprzątanie">
+              <td data-label-en="Cleaning" data-label-pl="Sprzątanie" data-label-es="Limpieza">
                 <span class="price">+€120</span>
               </td>
             </tr>
             <tr>
-              <td data-label-en="Option" data-label-pl="Opcja">
+              <td data-label-en="Option" data-label-pl="Opcja" data-label-es="Opción">
                 <div class="opt-name">
                   Villa Atlantic Cliffs
                   <small data-lang="en">Upper floor · up to 5 guests</small>
-                  <small data-lang="pl">Górne piętro · do 5 osób</small>
+                  <small data-lang="pl">Górne piętro · do 5 osób</small
+                  ><small data-lang="es">Planta superior · hasta 5 huéspedes</small>
                 </div>
               </td>
-              <td data-label-en="March–June" data-label-pl="Marzec–Czerwiec">
+              <td
+                data-label-en="March–June"
+                data-label-pl="Marzec–Czerwiec"
+                data-label-es="Marzo–Junio"
+              >
                 <span class="price"
-                  >€150<small data-lang="en"> / night</small
-                  ><small data-lang="pl"> / noc</small></span
+                  >€150<small data-lang="en"> / night</small><small data-lang="pl"> / noc</small
+                  ><small data-lang="es"> / noche</small></span
                 >
               </td>
-              <td data-label-en="July–February" data-label-pl="Lipiec–Luty">
+              <td
+                data-label-en="July–February"
+                data-label-pl="Lipiec–Luty"
+                data-label-es="Julio–Febrero"
+              >
                 <span class="price"
-                  >€160<small data-lang="en"> / night</small
-                  ><small data-lang="pl"> / noc</small></span
+                  >€160<small data-lang="en"> / night</small><small data-lang="pl"> / noc</small
+                  ><small data-lang="es"> / noche</small></span
                 >
               </td>
-              <td data-label-en="Cleaning" data-label-pl="Sprzątanie">
+              <td data-label-en="Cleaning" data-label-pl="Sprzątanie" data-label-es="Limpieza">
                 <span class="price">+€130</span>
               </td>
             </tr>
             <tr>
-              <td data-label-en="Option" data-label-pl="Opcja">
+              <td data-label-en="Option" data-label-pl="Opcja" data-label-es="Opción">
                 <div class="opt-name">
                   <span data-lang="en">Whole Villa Atlantic</span
-                  ><span data-lang="pl">Cała Villa Atlantic</span>
+                  ><span data-lang="pl">Cała Villa Atlantic</span
+                  ><span data-lang="es">Villa Atlantic entera</span>
                   <small data-lang="en">Both apartments · up to 11 guests</small>
-                  <small data-lang="pl">Oba apartamenty · do 11 osób</small>
+                  <small data-lang="pl">Oba apartamenty · do 11 osób</small
+                  ><small data-lang="es">Los dos apartamentos · hasta 11 huéspedes</small>
                 </div>
               </td>
-              <td data-label-en="March–June" data-label-pl="Marzec–Czerwiec">
+              <td
+                data-label-en="March–June"
+                data-label-pl="Marzec–Czerwiec"
+                data-label-es="Marzo–Junio"
+              >
                 <span class="price"
-                  >€270<small data-lang="en"> / night</small
-                  ><small data-lang="pl"> / noc</small></span
+                  >€270<small data-lang="en"> / night</small><small data-lang="pl"> / noc</small
+                  ><small data-lang="es"> / noche</small></span
                 >
               </td>
-              <td data-label-en="July–February" data-label-pl="Lipiec–Luty">
+              <td
+                data-label-en="July–February"
+                data-label-pl="Lipiec–Luty"
+                data-label-es="Julio–Febrero"
+              >
                 <span class="price"
-                  >€290<small data-lang="en"> / night</small
-                  ><small data-lang="pl"> / noc</small></span
+                  >€290<small data-lang="en"> / night</small><small data-lang="pl"> / noc</small
+                  ><small data-lang="es"> / noche</small></span
                 >
               </td>
-              <td data-label-en="Cleaning" data-label-pl="Sprzątanie">
+              <td data-label-en="Cleaning" data-label-pl="Sprzątanie" data-label-es="Limpieza">
                 <span class="price">+€250</span>
               </td>
             </tr>
@@ -2646,6 +2931,14 @@
             <li><strong>Bez VAT</strong> dla klientów prywatnych</li>
             <li>Opłata za sprzątanie jest jednorazowa, za cały pobyt</li>
           </ul>
+          <ul data-lang="es">
+            <li><strong>Estancia mínima:</strong> 7 noches</li>
+            <li>
+              <strong>Sin comisiones de plataforma</strong> — pagas directamente a los propietarios
+            </li>
+            <li><strong>Sin IVA</strong> para clientes particulares</li>
+            <li>La tarifa de limpieza es un cargo único por estancia</li>
+          </ul>
         </div>
       </div>
     </section>
@@ -2655,8 +2948,10 @@
       <div class="container">
         <div class="section-eyebrow" data-lang="en">Availability</div>
         <div class="section-eyebrow" data-lang="pl">Dostępność</div>
+        <div class="section-eyebrow" data-lang="es">Disponibilidad</div>
         <h2 data-lang="en">Live availability calendar</h2>
         <h2 data-lang="pl">Kalendarz dostępności na żywo</h2>
+        <h2 data-lang="es">Calendario de disponibilidad en vivo</h2>
         <p class="section-lead" data-lang="en">
           Switch between views to see availability for the whole villa or just one apartment. Dates
           that look free below are available to book.
@@ -2665,10 +2960,15 @@
           Przełączaj między widokami, aby sprawdzić dostępność całej willi lub jednego apartamentu.
           Daty wolne poniżej są dostępne do rezerwacji.
         </p>
+        <p class="section-lead" data-lang="es">
+          Cambia entre las vistas para ver la disponibilidad de la villa entera o de un solo
+          apartamento. Las fechas que aparecen libres abajo están disponibles para reservar.
+        </p>
 
         <div class="calendar-tabs">
           <button class="cal-tab active" data-cal-view="whole" data-lang="en">Whole villa</button>
-          <button class="cal-tab active" data-cal-view="whole" data-lang="pl">Cała willa</button>
+          <button class="cal-tab active" data-cal-view="whole" data-lang="pl">Cała willa</button
+          ><button class="cal-tab active" data-cal-view="whole" data-lang="es">Villa entera</button>
           <button class="cal-tab" data-cal-view="cliffs">Cliffs</button>
           <button class="cal-tab" data-cal-view="gardens">Gardens</button>
         </div>
@@ -2681,7 +2981,8 @@
               class="legend-dot"
               style="background: rgba(232, 102, 77, 0.3); border: 1px solid rgba(232, 102, 77, 0.6)"
             ></span
-            ><span data-lang="en">Fully booked</span><span data-lang="pl">Zajęte</span></span
+            ><span data-lang="en">Fully booked</span><span data-lang="pl">Zajęte</span
+            ><span data-lang="es">Completo</span></span
           >
           <span
             ><span
@@ -2689,14 +2990,16 @@
               style="background: rgba(217, 199, 165, 0.5); border: 1px solid var(--sand)"
             ></span
             ><span data-lang="en">Partially booked (one apartment free)</span
-            ><span data-lang="pl">Częściowo zajęte (jeden apartament wolny)</span></span
+            ><span data-lang="pl">Częściowo zajęte (jeden apartament wolny)</span
+            ><span data-lang="es">Parcialmente reservado (un apartamento libre)</span></span
           >
           <span
             ><span
               class="legend-dot"
               style="background: white; border: 1px solid var(--border)"
             ></span
-            ><span data-lang="en">Available</span><span data-lang="pl">Wolne</span></span
+            ><span data-lang="en">Available</span><span data-lang="pl">Wolne</span
+            ><span data-lang="es">Disponible</span></span
           >
         </div>
       </div>
@@ -2707,8 +3010,10 @@
       <div class="container">
         <div class="section-eyebrow" data-lang="en">Guests say</div>
         <div class="section-eyebrow" data-lang="pl">Goście mówią</div>
+        <div class="section-eyebrow" data-lang="es">Lo que dicen los huéspedes</div>
         <h2 data-lang="en">What our guests remember</h2>
         <h2 data-lang="pl">Co zapamiętali nasi goście</h2>
+        <h2 data-lang="es">Lo que recuerdan nuestros huéspedes</h2>
 
         <div class="reviews-grid">
           <div class="review">
@@ -2719,6 +3024,10 @@
             <p class="review-text" data-lang="pl">
               Razem z partnerem spędziliśmy w Villa Atlantic 4 tygodnie w lutym, uciekając od
               polskiej zimy. Szybki internet, zapierające dech widoki i idealna pogoda.
+            </p>
+            <p class="review-text" data-lang="es">
+              Junto con mi pareja pasamos 4 semanas en Villa Atlantic en febrero, escapando del
+              invierno polaco. Internet rápido, vistas impresionantes y un tiempo perfecto.
             </p>
             <div class="review-author">
               Aleksandra <span class="review-meta">· 32 · Warsaw, Poland</span>
@@ -2735,6 +3044,11 @@
               mamami, szukając spokojnego miejsca z dostępem do wszystkich udogodnień. Idealne
               miejsce na rodzinne wakacje w kwietniu.
             </p>
+            <p class="review-text" data-lang="es">
+              Visitamos Villa Atlantic como recién casados junto con nuestras madres, buscando un
+              lugar tranquilo con acceso a todas las comodidades. Fue un sitio perfecto para unas
+              vacaciones en familia en abril.
+            </p>
             <div class="review-author">
               Thomas <span class="review-meta">· 36 · Amsterdam, Netherlands</span>
             </div>
@@ -2749,6 +3063,12 @@
               Przyjechaliśmy z dwójką dzieci (5 i 8 lat) w lipcu. Basen i bezpośrednie wyjście do
               ogrodu z dolnego apartamentu sprawiły, że to były najprostsze wakacje rodzinne, jakie
               mieliśmy — dzieci cały dzień w wodzie, a my prawie nie musieliśmy ruszać się z domu.
+            </p>
+            <p class="review-text" data-lang="es">
+              Vinimos con dos niños (5 y 8 años) en julio. La piscina y el acceso directo al jardín
+              desde el apartamento inferior hicieron de estas las vacaciones en familia más fáciles
+              que hemos tenido: los niños se pasaban el día en el agua y apenas necesitábamos salir
+              de la propiedad.
             </p>
             <div class="review-author">
               Sophie <span class="review-meta">· 38 · Lyon, France</span>
@@ -2765,6 +3085,11 @@
               listopadzie. Ciepło, spokojnie, wszędzie blisko pieszo, a widok na klify o zachodzie
               słońca to coś, o czym wciąż rozmawiamy. Idealny długi pobyt.
             </p>
+            <p class="review-text" data-lang="es">
+              Mi mujer y yo estamos jubilados y pasamos seis semanas en Villa Atlantic en noviembre.
+              Cálido, tranquilo, todo a poca distancia a pie, y la vista de los acantilados al
+              atardecer es algo de lo que todavía hablamos. Una estancia larga perfecta.
+            </p>
             <div class="review-author">
               James <span class="review-meta">· 68 · Edinburgh, UK</span>
             </div>
@@ -2778,8 +3103,10 @@
       <div class="container">
         <div class="section-eyebrow" data-lang="en">Licensed vacation rental</div>
         <div class="section-eyebrow" data-lang="pl">Licencjonowany wynajem wakacyjny</div>
+        <div class="section-eyebrow" data-lang="es">Alquiler vacacional con licencia</div>
         <h2 data-lang="en">Officially registered with the Canary Islands government</h2>
         <h2 data-lang="pl">Oficjalnie zarejestrowana licencja na Wyspach Kanaryjskich</h2>
+        <h2 data-lang="es">Registrada oficialmente ante el Gobierno de Canarias</h2>
         <p data-lang="en">
           Villa Atlantic holds an official Vivienda Vacacional (VV) license — the legal permit
           required for vacation rentals in the Canary Islands. Booking with us means booking a fully
@@ -2789,6 +3116,11 @@
           Villa Atlantic posiada oficjalną licencję Vivienda Vacacional (VV) — wymagane zezwolenie
           na wynajem wakacyjny na Wyspach Kanaryjskich. Rezerwując u nas, wynajmujesz w pełni
           legalną, ubezpieczoną i zarejestrowaną nieruchomość.
+        </p>
+        <p data-lang="es">
+          Villa Atlantic cuenta con una licencia oficial de Vivienda Vacacional (VV), el permiso
+          legal exigido para los alquileres vacacionales en las Islas Canarias. Reservar con
+          nosotros significa reservar una propiedad totalmente legal, asegurada y registrada.
         </p>
         <div class="license-badge">
           <div class="badge-icon">✓</div>
@@ -2815,6 +3147,17 @@
             >
               Licencja oficjalna
             </div>
+            <div
+              style="
+                font-size: 0.78rem;
+                opacity: 0.85;
+                letter-spacing: 0.1em;
+                text-transform: uppercase;
+              "
+              data-lang="es"
+            >
+              Licencia oficial
+            </div>
             <div class="license-number" id="vv-number">VV-38-4-0114318</div>
           </div>
         </div>
@@ -2828,13 +3171,18 @@
           <div>
             <div class="section-eyebrow" data-lang="en">Get in touch</div>
             <div class="section-eyebrow" data-lang="pl">Skontaktuj się</div>
+            <div class="section-eyebrow" data-lang="es">Contacto</div>
             <h2 data-lang="en">Book your stay</h2>
             <h2 data-lang="pl">Zarezerwuj pobyt</h2>
+            <h2 data-lang="es">Reserva tu estancia</h2>
             <p style="color: var(--text-muted)" data-lang="en">
               Tell us when you'd like to come and which apartment. We'll reply within 24 hours.
             </p>
             <p style="color: var(--text-muted)" data-lang="pl">
               Napisz kiedy chcesz przyjechać i który apartament. Odpowiemy w ciągu 24 godzin.
+            </p>
+            <p style="color: var(--text-muted)" data-lang="es">
+              Cuéntanos cuándo te gustaría venir y qué apartamento. Te responderemos en 24 horas.
             </p>
 
             <div class="contact-methods">
@@ -2843,6 +3191,7 @@
                 <div>
                   <div class="contact-label" data-lang="en">Email</div>
                   <div class="contact-label" data-lang="pl">Email</div>
+                  <div class="contact-label" data-lang="es">Correo electrónico</div>
                   <div class="contact-value">pg@impall.pl</div>
                 </div>
               </a>
@@ -2851,6 +3200,7 @@
                 <div>
                   <div class="contact-label" data-lang="en">WhatsApp / Phone</div>
                   <div class="contact-label" data-lang="pl">WhatsApp / Telefon</div>
+                  <div class="contact-label" data-lang="es">WhatsApp / Teléfono</div>
                   <div class="contact-value">+48 604 782 783</div>
                 </div>
               </a>
@@ -2865,45 +3215,60 @@
             <!-- Formsubmit config: subject line + redirect back to our own page.
              _next is set at submit time by JS so it tracks whatever domain we're
              currently served from (no hardcoded URL to update on domain switch). -->
-            <input type="hidden" name="_subject" value="Villa Atlantic — nowe zapytanie" />
+            <input type="hidden" name="_subject" value="Villa Atlantic — new inquiry" />
             <input type="hidden" name="_next" id="form-next" value="" />
             <input type="hidden" name="_template" value="table" />
-            <label data-lang="en">Your name</label><label data-lang="pl">Imię i nazwisko</label>
+            <label data-lang="en">Your name</label><label data-lang="pl">Imię i nazwisko</label
+            ><label data-lang="es">Nombre y apellidos</label>
             <input type="text" name="name" required />
 
-            <label data-lang="en">Email</label><label data-lang="pl">Email</label>
+            <label data-lang="en">Email</label><label data-lang="pl">Email</label
+            ><label data-lang="es">Correo electrónico</label>
             <input type="email" name="email" required />
 
             <div class="form-row">
               <div>
-                <label data-lang="en">Check-in</label><label data-lang="pl">Data przyjazdu</label>
+                <label data-lang="en">Check-in</label><label data-lang="pl">Data przyjazdu</label
+                ><label data-lang="es">Entrada</label>
                 <input type="date" name="checkin" />
               </div>
               <div>
-                <label data-lang="en">Check-out</label><label data-lang="pl">Data wyjazdu</label>
+                <label data-lang="en">Check-out</label><label data-lang="pl">Data wyjazdu</label
+                ><label data-lang="es">Salida</label>
                 <input type="date" name="checkout" />
               </div>
             </div>
 
-            <label data-lang="en">Which option?</label><label data-lang="pl">Która opcja?</label>
+            <label data-lang="en">Which option?</label><label data-lang="pl">Która opcja?</label
+            ><label data-lang="es">¿Qué opción?</label>
             <select name="option">
               <option value="whole" data-lang="en">Whole Villa Atlantic (up to 11)</option>
               <option value="whole" data-lang="pl">Cała Villa Atlantic (do 11 osób)</option>
+              <option value="whole" data-lang="es">Villa Atlantic entera (hasta 11)</option>
               <option value="cliffs" data-lang="en">Villa Atlantic Cliffs — upper (up to 5)</option>
               <option value="cliffs" data-lang="pl">Villa Atlantic Cliffs — góra (do 5)</option>
+              <option value="cliffs" data-lang="es">
+                Villa Atlantic Cliffs — superior (hasta 5)
+              </option>
               <option value="gardens" data-lang="en">
                 Villa Atlantic Gardens — lower (up to 6)
               </option>
               <option value="gardens" data-lang="pl">Villa Atlantic Gardens — dół (do 6)</option>
+              <option value="gardens" data-lang="es">
+                Villa Atlantic Gardens — inferior (hasta 6)
+              </option>
               <option value="any" data-lang="en">Not sure / ask us</option>
               <option value="any" data-lang="pl">Nie wiem / zapytaj nas</option>
+              <option value="any" data-lang="es">No lo sé / pregúntanos</option>
             </select>
 
-            <label data-lang="en">Message</label><label data-lang="pl">Wiadomość</label>
+            <label data-lang="en">Message</label><label data-lang="pl">Wiadomość</label
+            ><label data-lang="es">Mensaje</label>
             <textarea name="message" rows="4" placeholder=""></textarea>
 
             <button type="submit" class="btn btn-primary" data-lang="en">Send inquiry</button>
-            <button type="submit" class="btn btn-primary" data-lang="pl">Wyślij zapytanie</button>
+            <button type="submit" class="btn btn-primary" data-lang="pl">Wyślij zapytanie</button
+            ><button type="submit" class="btn btn-primary" data-lang="es">Enviar consulta</button>
           </form>
         </div>
       </div>
@@ -2915,10 +3280,14 @@
         <div class="f-brand">Villa Atlantic</div>
         <div class="f-meta" data-lang="en">Puerto de Santiago, Tenerife · Canary Islands</div>
         <div class="f-meta" data-lang="pl">Puerto de Santiago, Teneryfa · Wyspy Kanaryjskie</div>
+        <div class="f-meta" data-lang="es">Puerto de Santiago, Tenerife · Islas Canarias</div>
         <hr />
         <div class="f-vv">
           <span data-lang="en">Official Canary Islands vacation rental license </span>
-          <span data-lang="pl">Oficjalna licencja wynajmu wakacyjnego Wysp Kanaryjskich </span>
+          <span data-lang="pl">Oficjalna licencja wynajmu wakacyjnego Wysp Kanaryjskich </span
+          ><span data-lang="es"
+            >Licencia oficial de alquiler vacacional de las Islas Canarias
+          </span>
           <span id="vv-number-footer">VV-38-4-0114318</span>
         </div>
         <div class="f-vv" style="margin-top: 8px">
@@ -2939,13 +3308,132 @@
 
     <script>
       // ─── LANGUAGE ──────────────────────────────────────
-      // Keep SUPPORTED in sync with the head script. To add Spanish:
-      //   1) add 'es' below, 2) add a data-lang="es" CSS rule, 3) add a button in .lang-switch,
-      //   4) add data-lang="es" content alongside existing en/pl strings.
+      // SUPPORTED must stay in sync with the head pre-paint script.
+      const SUPPORTED = ['en', 'pl', 'es'];
+      const DEFAULT_LANG = 'en';
+
+      // Calendar state — declared here (above setLang) so setLang can re-localize
+      // the calendar through a plain `if (calendar)` guard without hitting a
+      // let-TDZ ReferenceError on the bootstrap setLang() call below.
+      let calendar;
+      let currentView = 'whole';
+      let fcLoaded = false;
+
+      // Strings that can't use the data-lang sibling trick: head meta/social
+      // tags, the form email subject, lightbox aria-labels, the calendar
+      // "Booked" label. (Visible body copy uses data-lang siblings instead.)
+      const I18N_META = {
+        en: {
+          title: 'Villa Atlantic — Oceanfront holiday villa in Puerto de Santiago, Tenerife',
+          description:
+            'Oceanfront villa with pool in Puerto de Santiago, Tenerife. Book the whole house, the upper floor (Cliffs, 5 guests) or the lower one (Gardens, 6 guests). VV license, direct booking, no platform fees.',
+          ogTitle: 'Villa Atlantic — Puerto de Santiago, Tenerife',
+          ogDescription:
+            'Oceanfront villa with pool and garden. Two independent apartments (5+6 guests) or rent the whole villa (up to 11). Official VV license.',
+          subject: 'Villa Atlantic — new inquiry',
+          booked: 'Booked',
+          lb: {
+            close: 'Close',
+            zoom: 'Zoom',
+            fullscreen: 'Fullscreen',
+            prev: 'Previous',
+            next: 'Next',
+          },
+        },
+        pl: {
+          title: 'Villa Atlantic — Nadmorska willa wakacyjna w Puerto de Santiago na Teneryfie',
+          description:
+            'Nadmorska willa z basenem w Puerto de Santiago na Teneryfie. Wynajmij cały dom, górne piętro (Cliffs, 5 osób) lub dolne (Gardens, 6 osób). Licencja VV, rezerwacja bezpośrednia, bez prowizji platform.',
+          ogTitle: 'Villa Atlantic — Puerto de Santiago, Teneryfa',
+          ogDescription:
+            'Nadmorska willa z basenem i ogrodem. Dwa niezależne apartamenty (5+6 osób) lub cała willa (do 11 osób). Oficjalna licencja VV.',
+          subject: 'Villa Atlantic — nowe zapytanie',
+          booked: 'Zajęte',
+          lb: {
+            close: 'Zamknij',
+            zoom: 'Powiększ',
+            fullscreen: 'Pełny ekran',
+            prev: 'Poprzednie',
+            next: 'Następne',
+          },
+        },
+        es: {
+          title: 'Villa Atlantic — Villa vacacional frente al mar en Puerto de Santiago, Tenerife',
+          description:
+            'Villa frente al mar con piscina en Puerto de Santiago, Tenerife. Reserva la casa entera, la planta superior (Cliffs, 5 huéspedes) o la inferior (Gardens, 6 huéspedes). Licencia VV, reserva directa, sin comisiones de plataformas.',
+          ogTitle: 'Villa Atlantic — Puerto de Santiago, Tenerife',
+          ogDescription:
+            'Villa frente al mar con piscina y jardín. Dos apartamentos independientes (5+6 huéspedes) o la villa entera (hasta 11). Licencia VV oficial.',
+          subject: 'Villa Atlantic — nueva consulta',
+          booked: 'Reservado',
+          lb: {
+            close: 'Cerrar',
+            zoom: 'Ampliar',
+            fullscreen: 'Pantalla completa',
+            prev: 'Anterior',
+            next: 'Siguiente',
+          },
+        },
+      };
+
+      function setMeta(selector, value) {
+        const el = document.querySelector(selector);
+        if (el) el.setAttribute('content', value);
+      }
+      function setAria(selector, label) {
+        const el = document.querySelector(selector);
+        if (el) el.setAttribute('aria-label', label);
+      }
+
+      function setLang(l) {
+        const m = I18N_META[l] || I18N_META[DEFAULT_LANG];
+        SUPPORTED.forEach((x) => document.documentElement.classList.remove('lang-' + x));
+        document.documentElement.classList.add('lang-' + l);
+        document.documentElement.lang = l;
+        try {
+          localStorage.setItem('villa-atlantic-lang', l);
+        } catch (e) {}
+        document.querySelectorAll('.lang-switch button').forEach((b) => {
+          b.classList.toggle('active', b.dataset.setLang === l);
+        });
+        // Pricing table data-label attributes (mobile stacked headers).
+        document.querySelectorAll('[data-label-' + l + ']').forEach((el) => {
+          el.setAttribute('data-label', el.getAttribute('data-label-' + l));
+        });
+        // Head meta + social tags (client-side only — crawlers still see EN source).
+        document.title = m.title;
+        setMeta('meta[name="description"]', m.description);
+        setMeta('meta[property="og:title"]', m.ogTitle);
+        setMeta('meta[property="og:description"]', m.ogDescription);
+        // Inquiry-form email subject line.
+        const subj = document.querySelector('.inquiry-form input[name="_subject"]');
+        if (subj) subj.value = m.subject;
+        // Lightbox control aria-labels.
+        setAria('.lightbox-close', m.lb.close);
+        setAria('.lightbox-zoom', m.lb.zoom);
+        setAria('.lightbox-fullscreen', m.lb.fullscreen);
+        setAria('.lightbox-prev', m.lb.prev);
+        setAria('.lightbox-next', m.lb.next);
+        // Alt text on the descriptive section images.
+        document.querySelectorAll('[data-alt-' + l + ']').forEach((img) => {
+          img.setAttribute('alt', img.getAttribute('data-alt-' + l));
+        });
+        // Re-localize the calendar if it has already been built.
+        if (calendar) {
+          calendar.setOption('locale', l);
+          calendar.getEventSources().forEach((s) => s.remove());
+          buildSources(currentView).forEach((s) => calendar.addEventSource(s));
+          calendar.render();
+          refreshAllPrices();
+        }
+      }
+
+      // Bootstrap: pick stored/browser lang, apply it, wire the switch buttons.
       (function () {
-        const SUPPORTED = ['en', 'pl'];
-        const DEFAULT_LANG = 'en';
-        const stored = localStorage.getItem('villa-atlantic-lang');
+        let stored = null;
+        try {
+          stored = localStorage.getItem('villa-atlantic-lang');
+        } catch (e) {}
         let lang;
         if (stored && SUPPORTED.includes(stored)) {
           lang = stored;
@@ -2954,21 +3442,6 @@
           lang = SUPPORTED.includes(browser) ? browser : DEFAULT_LANG;
         }
         setLang(lang);
-
-        function setLang(l) {
-          SUPPORTED.forEach((x) => document.documentElement.classList.remove('lang-' + x));
-          document.documentElement.classList.add('lang-' + l);
-          document.documentElement.lang = l;
-          localStorage.setItem('villa-atlantic-lang', l);
-          document.querySelectorAll('.lang-switch button').forEach((b) => {
-            b.classList.toggle('active', b.dataset.setLang === l);
-          });
-          // Update pricing table data-label attributes
-          document.querySelectorAll('[data-label-' + l + ']').forEach((el) => {
-            el.setAttribute('data-label', el.getAttribute('data-label-' + l));
-          });
-        }
-
         document.querySelectorAll('.lang-switch button').forEach((btn) => {
           btn.addEventListener('click', () => setLang(btn.dataset.setLang));
         });
@@ -3024,10 +3497,6 @@
         return m >= 2 && m <= 5 ? 'low' : 'high';
       }
 
-      let calendar;
-      let currentView = 'whole';
-      let fcLoaded = false;
-
       function loadScript(src) {
         return new Promise((resolve, reject) => {
           const s = document.createElement('script');
@@ -3049,6 +3518,20 @@
         fcLoaded = true;
         loadStyle('https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.css');
         await loadScript('https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js');
+        // Locale packs register onto FullCalendar.globalLocales (en is built in);
+        // they give month/weekday/button text in pl + es. MUST come from
+        // @fullcalendar/core — fullcalendar@6.1.15/locales/* returns 404. Each
+        // load is non-fatal: a failed pack just leaves that language on en
+        // labels, rather than aborting the whole calendar (the core/ical/
+        // icalendar awaits below stay fatal).
+        await Promise.all([
+          loadScript(
+            'https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.15/locales/pl.global.min.js'
+          ).catch(() => {}),
+          loadScript(
+            'https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.15/locales/es.global.min.js'
+          ).catch(() => {}),
+        ]);
         // @fullcalendar/icalendar depends on ical.js at runtime (peer dep, not bundled).
         await loadScript('https://cdn.jsdelivr.net/npm/ical.js@1.5.0/build/ical.min.js');
         await loadScript(
@@ -3125,6 +3608,10 @@
         calendar = new FullCalendar.Calendar(el, {
           initialView: 'dayGridMonth',
           height: 'auto',
+          // Month titles, weekday headers and prev/next/today buttons follow the
+          // current page language. firstDay:1 keeps Monday-first for the en
+          // default (pl/es packs are already Monday-first, so this is harmless).
+          locale: document.documentElement.lang || 'en',
           firstDay: 1,
           validRange: {
             start: (function () {
@@ -3140,6 +3627,17 @@
           eventDidMount: function (info) {
             info.el.style.backgroundColor = 'rgba(232,102,77,0.75)';
             info.el.style.borderColor = 'rgba(232,102,77,0.9)';
+            // The iCal feed bakes an English SUMMARY ("Booked") into every
+            // event title, and source-level eventContent is ignored by
+            // FullCalendar v6. Localize the rendered title here (calendar-level
+            // hook) instead, so it follows the page language. setLang rebuilds
+            // the sources on switch, re-firing this for live re-localization.
+            const titleEl = info.el.querySelector('.fc-event-title');
+            if (titleEl) {
+              titleEl.textContent = (
+                I18N_META[document.documentElement.lang] || I18N_META.en
+              ).booked;
+            }
           },
           dateClick: function (info) {
             trackAnalytics('calendar_date_click', {
@@ -3212,7 +3710,6 @@
             format: 'ics',
             color: '#e8664d',
             display: 'background',
-            eventContent: () => 'Booked',
           });
         } else if (view === 'gardens' && hasGardens) {
           sources.push({

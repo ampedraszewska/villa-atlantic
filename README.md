@@ -76,12 +76,19 @@ Dodaj wydarzenie w **obu** kalendarzach (Cliffs + Gardens) na te same daty.
 
 ## Jak edytować treść strony
 
-Otwórz `index.html` w edytorze tekstu (VS Code, Notepad++, TextEdit). Polski i angielski są w tym samym pliku:
+Otwórz `index.html` w edytorze tekstu (VS Code, Notepad++, TextEdit). Strona ma trzy języki w jednym pliku, przełączane po stronie przeglądarki (`pl` / `en` / `es`):
 
 - Polski tekst: szukaj `data-lang="pl"`
 - Angielski: szukaj `data-lang="en"`
+- Hiszpański: szukaj `data-lang="es"`
+
+Każdy widoczny tekst ma trzy wersje rodzeństwa (`en` → `pl` → `es`) w tym samym rodzicu. Edytując treść, zmień wszystkie trzy. Test `tests/test_html_integrity.py` pilnuje, żeby liczba `en`/`pl`/`es` była równa pod każdym rodzicem.
+
+Teksty, których nie da się zrobić rodzeństwem `data-lang` (tytuł strony, meta/OG, temat e-maila formularza, etykiety lightboxa, słowo „Booked" w kalendarzu) siedzą w słowniku `I18N_META` w `<script>` — tam też trzy języki.
 
 Zmień tekst, zapisz, wgraj zmiany na serwer (patrz: deploy).
+
+> **Uwaga (kalendarz, lokalizacja miesięcy):** nazwy miesięcy/dni i przyciski FullCalendar biorą się z paczek lokalizacji ładowanych osobno. **Muszą** pochodzić z `@fullcalendar/core@6.1.15/locales/<lang>.global.min.js` — ścieżka `fullcalendar@6.1.15/locales/*` (bez `@fullcalendar/core`) zwraca **404** i kalendarz zostaje po angielsku.
 
 ### Co do uzupełnienia przed publikacją
 
