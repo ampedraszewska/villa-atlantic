@@ -232,10 +232,8 @@ def test_pii_clear_rearms_later_detection(tmp_path):
     ]
 
 
-def test_pii_re_records_after_intervening_change(tmp_path):
-    """A booking diff logged after the leak clears the 'last record is
-    pii_detected' guard, so a later regression re-alerts — the leak is live
-    again and the owner needs to know."""
+def test_pii_stays_idempotent_after_intervening_booking_change(tmp_path):
+    """Booking churn while the leak is still live must not re-arm the PII alert."""
     log = tmp_path / "changelog.jsonl"
     assert _run_pii(log, 1) == "recorded"
     # A normal diff record lands (a booking appeared while / after the leak).
@@ -254,7 +252,8 @@ def test_pii_re_records_after_intervening_change(tmp_path):
         ],
         check=True,
     )
-    assert _run_pii(log, 2) == "recorded"
+    assert _run_pii(log, 2) == "already"
+    assert _run_pii_clear(log, 3) == "cleared"
 
 
 def _run_quarantine(before, log, run_n):

@@ -205,6 +205,13 @@ def _last_record_for(
     return last
 
 
+def _last_pii_record_for(changelog: pathlib.Path, apt: str) -> dict | None:
+    """The most recent PII state for an apartment, ignoring booking churn."""
+    return _last_record_for(
+        changelog, apt, ignore_actions=("added", "removed", "modified", "quarantined")
+    )
+
+
 def _same_quarantine(prev: dict | None, new_rec: dict) -> bool:
     """True if the apartment's last record is already a quarantine for the same
     blocked wipe (same preserved bookings) — only metadata would differ.
@@ -247,7 +254,7 @@ def _main() -> int:
     out = pathlib.Path(args.changelog)
 
     if args.pii:
-        prev = _last_record_for(out, args.apt, ignore_actions=("quarantined",))
+        prev = _last_pii_record_for(out, args.apt)
         if prev and prev.get("action") == "pii_detected":
             # Leak already flagged for this apt; don't re-log/re-alert every hour
             # while the misconfiguration persists.
@@ -255,7 +262,7 @@ def _main() -> int:
             return 0
         records = [pii_record()]
     elif args.pii_clear:
-        prev = _last_record_for(out, args.apt, ignore_actions=("quarantined",))
+        prev = _last_pii_record_for(out, args.apt)
         if not prev or prev.get("action") != "pii_detected":
             print("clear")
             return 0
