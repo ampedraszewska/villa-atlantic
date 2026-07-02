@@ -88,8 +88,9 @@ jobs:
             # fails (non-zero) on the expected 404, short-circuiting the &&.
             # grep reads a FILE (not a pipe) so its early exit can't SIGPIPE the
             # producer and turn a real leak into a silent miss. Alert-only — the
-            # site syncs from the private feed regardless. Idempotent via
-            # log_ical_changes so a persisting leak emails once, not hourly.
+            # site syncs from the private feed regardless. Deduped via
+            # log_ical_changes so a persisting leak doesn't re-email hourly
+            # (a booking change on the calendar can re-arm the alert).
             pub="ical/$apt.pubcheck.ics"
             if curl -fsS "${PUBLIC[$apt]}" -o "$pub" 2>/dev/null \
                && grep -q '^BEGIN:VEVENT' "$pub"; then
@@ -194,13 +195,14 @@ jobs:
             Fix (per calendar, in Google Calendar):
             Settings → select the calendar → "Access permissions for events" →
             UNCHECK "Make available to public" ("Udostępnij publicznie"). Save.
-            Do NOT switch it to "free/busy" — that hides names but also drops
-            every booking marked "Free", so those dates would wrongly show as
-            available on the site. Turning public OFF is the correct fix; the
-            sync keeps working from the private feed.
+            Do NOT just switch it to "free/busy" — that hides names but leaves
+            the public URL live, so this alert will keep tripping. Only
+            unchecking "Make available to public" resolves it; the site keeps
+            syncing from the private feed either way.
 
-            You will not get another email for the same leak; a fresh alert only
-            fires if it clears and later regresses.
+            You will not get an hourly repeat while this leak persists, but a
+            booking change on the calendar can re-arm the alert — treat any
+            repeat email as the leak still being open.
 
       - name: Fail run if a wipe was blocked
         if: always() && steps.sync.outputs.wipe == '1'
