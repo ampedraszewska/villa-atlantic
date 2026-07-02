@@ -33,7 +33,9 @@ jobs:
           )
           SHA_BEFORE="$(git rev-parse --short HEAD)"
           WIPE=0
+          PII=0
           : > ical/.wipe_alert.txt
+          : > ical/.pii_alert.txt
 
           # Emit the step outputs on EXIT — including an abnormal abort (a feed's
           # curl 404s, a script raises) part-way through the loop. Writing wipe=
@@ -43,6 +45,11 @@ jobs:
           emit_outputs() {
             local rc=$?
             echo "wipe=$WIPE" >> "$GITHUB_OUTPUT"
+            echo "pii=$PII" >> "$GITHUB_OUTPUT"
+            if [ "$PII" = "1" ]; then
+              # Only the calendar names (no feed content) reach the ledger/email.
+              { echo 'pii_alert<<EOF_PII'; cat ical/.pii_alert.txt; echo 'EOF_PII'; } >> "$GITHUB_OUTPUT"
+            fi
             if [ "$WIPE" = "1" ]; then
               { echo "Run: $RUN_URL"; echo
                 echo "Live site untouched — it still shows the last-good bookings."
@@ -58,6 +65,33 @@ jobs:
 
           for apt in "${!FEEDS[@]}"; do
             curl -fsS "${FEEDS[$apt]}" -o "ical/$apt.raw.ics"
+
+            # PII tripwire: the raw Google feed must be free/busy-only. In
+            # "show event details" mode the guest name lands in SUMMARY (verified:
+            # "Rezerwacja dla <name>", "Pawel"); DESCRIPTION/ATTENDEE/ORGANIZER/
+            # LOCATION can also carry it. Free/busy mode collapses SUMMARY to a
+            # generic token — this calendar is PL/EN, so allowlist busy / zajęte /
+            # empty and flag anything else. Alert-only: the sanitizer still strips
+            # everything, so the public site stays safe regardless. Idempotent via
+            # log_ical_changes so a persisting leak emails once, not hourly.
+            # NOTE: verify this allowlist against the real feed once the owner
+            # flips both calendars to free/busy — Google may emit another token.
+            # The allowlist grep must NOT use -q: its early exit SIGPIPEs the
+            # SUMMARY grep mid-stream and, under pipefail, turns a detection
+            # into a silent miss on large feeds. >/dev/null still keeps the
+            # offending lines (guest names) out of the step log.
+            if grep -qiE '^(DESCRIPTION|ATTENDEE|ORGANIZER|LOCATION)[;:]' "ical/$apt.raw.ics" \
+               || grep -iE '^SUMMARY[;:]' "ical/$apt.raw.ics" | grep -viE '^SUMMARY[^:]*:[[:space:]]*(busy|zajęte|zajete)?[[:space:]]*$' >/dev/null; then
+              pii_status="$(python3 scripts/log_ical_changes.py --apt "$apt" --pii \
+                --changelog ical/changelog.jsonl --run-url "$RUN_URL" --sha "$SHA_BEFORE")"
+              if [ "$pii_status" = "recorded" ]; then
+                echo "Calendar: $apt" >> ical/.pii_alert.txt
+                PII=1
+              else
+                echo "PII leak for $apt already flagged — no new alert."
+              fi
+            fi
+
             python3 scripts/sanitize_ical.py "ical/$apt.raw.ics" "ical/$apt.candidate.ics"
 
             # before-state = the currently committed live feed (empty if absent)
@@ -93,7 +127,9 @@ jobs:
           done
 
           rm -f ical/*.raw.ics ical/*.candidate.ics ical/*.before.ics
-          # Outputs (wipe= and the alert) are emitted by the EXIT trap above.
+          # Outputs (wipe=, pii= and the alerts) are emitted by the EXIT trap above.
+          # .pii_alert.txt / .wipe_alert.txt are left for the trap to read, then
+          # discarded with the runner (both are gitignored, never committed).
 
       - name: Commit if changed
         run: |
@@ -120,6 +156,36 @@ jobs:
           to: ${{ vars.ALERT_EMAIL }}
           from: Villa Atlantic Sync <${{ secrets.MAIL_USERNAME }}>
           body: ${{ steps.sync.outputs.alert }}
+
+      - name: Email alert on guest details leaking in the public feed
+        if: always() && steps.sync.outputs.pii == '1'
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: '⚠️ Villa Atlantic: guest details visible in Google Calendar public feed — fix sharing settings'
+          to: ${{ vars.ALERT_EMAIL }}
+          from: Villa Atlantic Sync <${{ secrets.MAIL_USERNAME }}>
+          body: |
+            The raw Google Calendar public feed is exposing guest details
+            (event titles / names) to anyone with the feed URL.
+
+            Affected calendar(s):
+            ${{ steps.sync.outputs.pii_alert }}
+            The website itself is safe — the sanitizer strips all details before
+            publishing, so atlanticvilla.net still shows only "Booked". This only
+            affects the raw Google feed URL.
+
+            Fix (per calendar, in Google Calendar):
+            Settings → select the calendar → "Access permissions for events" →
+            set the public sharing to "See only free/busy (hide details)"
+            ("Zobacz tylko wolny/zajęty (ukryj szczegóły)"). Save.
+
+            You will not get another email for the same leak; a fresh alert only
+            fires if it clears and later regresses.
 
       - name: Fail run if a wipe was blocked
         if: always() && steps.sync.outputs.wipe == '1'

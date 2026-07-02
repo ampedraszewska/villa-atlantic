@@ -5,7 +5,7 @@ import pathlib
 import subprocess
 import sys
 
-from log_ical_changes import diff_events, quarantine_record
+from log_ical_changes import diff_events, pii_record, quarantine_record
 
 SCRIPT = pathlib.Path(__file__).resolve().parent.parent / "scripts" / "log_ical_changes.py"
 
@@ -146,6 +146,76 @@ def test_cli_appends_jsonl(tmp_path):
     assert entry["sha_before"] == "abc123"
 
 
+def test_pii_record_carries_no_event_data():
+    """The PII flag must never carry names/dates/UIDs — the raw feed that
+    triggered it holds the guest surnames, and the ledger is public."""
+    rec = pii_record()
+    assert rec == {"action": "pii_detected"}
+
+
+def _run_pii(log, run_n):
+    return subprocess.run(
+        [
+            sys.executable,
+            str(SCRIPT),
+            "--apt",
+            "cliffs",
+            "--pii",
+            "--changelog",
+            str(log),
+            "--run-url",
+            f"http://run/{run_n}",
+            "--sha",
+            f"sha{run_n}",
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+
+
+def test_pii_is_idempotent_across_runs(tmp_path):
+    """While the sharing misconfiguration persists, every hourly run re-detects
+    the leak. It must alert once ('recorded') then stay quiet ('already'),
+    writing exactly one public-ledger record — no name ever reaches the file."""
+    log = tmp_path / "changelog.jsonl"
+    assert _run_pii(log, 1) == "recorded"
+    assert _run_pii(log, 2) == "already"
+    assert _run_pii(log, 3) == "already"
+    lines = log.read_text(encoding="utf-8").splitlines()
+    assert len(lines) == 1
+    entry = json.loads(lines[0])
+    assert entry["action"] == "pii_detected"
+    assert entry["apartment"] == "cliffs"
+    # No guest data of any kind in the committed record.
+    assert set(entry) == {"action", "apartment", "detected_at", "run_url", "sha_before"}
+
+
+def test_pii_re_records_after_intervening_change(tmp_path):
+    """A booking diff logged after the leak clears the 'last record is
+    pii_detected' guard, so a later regression re-alerts — the leak is live
+    again and the owner needs to know."""
+    log = tmp_path / "changelog.jsonl"
+    assert _run_pii(log, 1) == "recorded"
+    # A normal diff record lands (a booking appeared while / after the leak).
+    after = tmp_path / "a.ics"
+    after.write_text(_cal(_sanitized("a@g", "20260713", "20260722")), encoding="utf-8")
+    subprocess.run(
+        [
+            sys.executable,
+            str(SCRIPT),
+            "--apt",
+            "cliffs",
+            "--after",
+            str(after),
+            "--changelog",
+            str(log),
+        ],
+        check=True,
+    )
+    assert _run_pii(log, 2) == "recorded"
+
+
 def _run_quarantine(before, log, run_n):
     return subprocess.run(
         [
@@ -202,4 +272,26 @@ def test_quarantine_re_records_when_wipe_changes(tmp_path):
         encoding="utf-8",
     )
     assert _run_quarantine(before, log, 2) == "recorded"
+    assert len(log.read_text(encoding="utf-8").splitlines()) == 2
+
+
+def test_pii_and_quarantine_guards_ignore_each_other(tmp_path):
+    """A leak and a blocked wipe can persist simultaneously (a details-mode
+    feed whose only events are single-day all-day ones trips the tripwire yet
+    sanitizes to an empty candidate). Each channel's record must not reset the
+    other's dedup, else both alerts re-fire and the public ledger grows two
+    records every hourly run."""
+    before = tmp_path / "before.ics"
+    log = tmp_path / "changelog.jsonl"
+    before.write_text(
+        _cal(_sanitized("a@g", "20260713", "20260722") + _sanitized("b@g", "20260901", "20260910")),
+        encoding="utf-8",
+    )
+    # Hour 1: both alert once. Hours 2-3: both stay quiet despite alternation.
+    assert _run_pii(log, 1) == "recorded"
+    assert _run_quarantine(before, log, 1) == "recorded"
+    assert _run_pii(log, 2) == "already"
+    assert _run_quarantine(before, log, 2) == "duplicate"
+    assert _run_pii(log, 3) == "already"
+    assert _run_quarantine(before, log, 3) == "duplicate"
     assert len(log.read_text(encoding="utf-8").splitlines()) == 2
