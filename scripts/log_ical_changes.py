@@ -13,6 +13,10 @@ One JSON object per line. Diff actions:
     modified   a UID whose start/end changed (carries prev_* and new values)
     quarantined  emitted instead of a diff when the wipe guard blocked a feed;
                  records the attempted wipe without touching the live bookings
+    pii_detected  emitted when the raw Google feed exposed guest details
+                 (sharing misconfigured to show event details); alert-only,
+                 never carries names — the sanitizer keeps the public feed safe
+    pii_cleared   emitted when the public Google feed is confirmed disabled
 
 ``created`` / ``last_modified`` are Google's own timestamps, lifted from the raw
 feed (the sanitized feed strips them). ``detected_at`` + ``run_url`` + ``sha``
@@ -28,6 +32,14 @@ CLI (used by the sync workflow):
     # record a blocked wipe (no live change)
     python3 scripts/log_ical_changes.py --apt cliffs --quarantined \\
         --before before.ics --changelog ical/changelog.jsonl --run-url URL --sha SHA
+
+    # record guest details leaking in the raw public feed (alert-only, no names)
+    python3 scripts/log_ical_changes.py --apt cliffs --pii \\
+        --changelog ical/changelog.jsonl --run-url URL --sha SHA
+
+    # record that the public feed is confirmed disabled again
+    python3 scripts/log_ical_changes.py --apt cliffs --pii-clear \\
+        --changelog ical/changelog.jsonl --run-url URL --sha SHA
 """
 
 from __future__ import annotations
@@ -138,6 +150,18 @@ def quarantine_record(before_text: str) -> dict:
     }
 
 
+def pii_record() -> dict:
+    """One record flagging that the raw feed exposed guest details. Carries no
+    event data at all — the raw feed's SUMMARY/DESCRIPTION hold the names we must
+    never write to the committed, public ledger. Detection is the whole payload."""
+    return {"action": "pii_detected"}
+
+
+def pii_clear_record() -> dict:
+    """One record re-arming the PII tripwire after the public feed is disabled."""
+    return {"action": "pii_cleared"}
+
+
 def _stamp(record: dict, apt: str, detected_at: str, run_url: str, sha: str) -> dict:
     """Prefix shared metadata onto a record (apartment + when-we-noticed)."""
     return {
@@ -156,8 +180,16 @@ def _read(path: str | None) -> str:
     return p.read_text(encoding="utf-8") if p.exists() else ""
 
 
-def _last_record_for(changelog: pathlib.Path, apt: str) -> dict | None:
-    """The most recent ledger record for an apartment, or None."""
+def _last_record_for(
+    changelog: pathlib.Path, apt: str, ignore_actions: tuple[str, ...] = ()
+) -> dict | None:
+    """The most recent ledger record for an apartment, or None.
+
+    ``ignore_actions`` skips record types that say nothing about the caller's
+    own dedup state: the PII and quarantine alerts are independent channels,
+    so each must ignore the other's records — otherwise a leak and a blocked
+    wipe persisting together would alternate in the ledger and re-fire both
+    alerts every hourly run."""
     if not changelog.exists():
         return None
     last: dict | None = None
@@ -168,9 +200,16 @@ def _last_record_for(changelog: pathlib.Path, apt: str) -> dict | None:
             rec = json.loads(line)
         except json.JSONDecodeError:
             continue
-        if rec.get("apartment") == apt:
+        if rec.get("apartment") == apt and rec.get("action") not in ignore_actions:
             last = rec
     return last
+
+
+def _last_pii_record_for(changelog: pathlib.Path, apt: str) -> dict | None:
+    """The most recent PII state for an apartment, ignoring booking churn."""
+    return _last_record_for(
+        changelog, apt, ignore_actions=("added", "removed", "modified", "quarantined")
+    )
 
 
 def _same_quarantine(prev: dict | None, new_rec: dict) -> bool:
@@ -202,6 +241,10 @@ def _main() -> int:
     ap.add_argument("--after", help="new sanitized feed")
     ap.add_argument("--raw", help="raw feed (for CREATED / LAST-MODIFIED)")
     ap.add_argument("--quarantined", action="store_true", help="record a blocked wipe")
+    ap.add_argument(
+        "--pii", action="store_true", help="record guest details leaking in the raw feed"
+    )
+    ap.add_argument("--pii-clear", action="store_true", help="record public feed disabled")
     ap.add_argument("--run-url", default="", help="GitHub Actions run URL")
     ap.add_argument("--sha", default="", help="commit sha of the before-state")
     ap.add_argument("--detected-at", default=None, help="override timestamp (ISO 8601 Z)")
@@ -210,9 +253,24 @@ def _main() -> int:
     detected_at = args.detected_at or _now_iso()
     out = pathlib.Path(args.changelog)
 
-    if args.quarantined:
+    if args.pii:
+        prev = _last_pii_record_for(out, args.apt)
+        if prev and prev.get("action") == "pii_detected":
+            # Leak already flagged for this apt; don't re-log/re-alert every hour
+            # while the misconfiguration persists.
+            print("already")
+            return 0
+        records = [pii_record()]
+    elif args.pii_clear:
+        prev = _last_pii_record_for(out, args.apt)
+        if not prev or prev.get("action") != "pii_detected":
+            print("clear")
+            return 0
+        records = [pii_clear_record()]
+    elif args.quarantined:
         new_rec = quarantine_record(_read(args.before))
-        if _same_quarantine(_last_record_for(out, args.apt), new_rec):
+        prev = _last_record_for(out, args.apt, ignore_actions=("pii_detected", "pii_cleared"))
+        if _same_quarantine(prev, new_rec):
             # Same wipe already quarantined; don't re-log/re-alert every hour.
             print("duplicate")
             return 0
@@ -228,7 +286,9 @@ def _main() -> int:
         for rec in records:
             line = _stamp(rec, args.apt, detected_at, args.run_url, args.sha)
             fh.write(json.dumps(line, ensure_ascii=False) + "\n")
-    if args.quarantined:
+    if args.pii_clear:
+        print("cleared")
+    elif args.quarantined or args.pii:
         print("recorded")
     return 0
 

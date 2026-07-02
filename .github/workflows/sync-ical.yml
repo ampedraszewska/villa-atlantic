@@ -24,16 +24,32 @@ jobs:
         env:
           CONFIRM_WIPE_APT: ${{ github.event.inputs.confirm_wipe_apt }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          # Private (secret) iCal URLs — full event details, ALL bookings incl.
+          # ones marked "Free" availability. Not derivable from the public URL;
+          # stored as repo Actions secrets so they stay out of this public repo.
+          CLIFFS_ICAL_URL: ${{ secrets.CLIFFS_ICAL_URL }}
+          GARDENS_ICAL_URL: ${{ secrets.GARDENS_ICAL_URL }}
         run: |
           set -euo pipefail
           mkdir -p ical
+          # Sync from the PRIVATE feeds (secrets): full details + every booking,
+          # including "Free"-availability events the sanitizer force-blocks. The
+          # PUBLIC feeds must stay disabled — they served guest names to anyone
+          # with the URL. We keep the public URLs here only to assert they stay
+          # OFF (see the PII tripwire below); disabled, they expose nothing.
           declare -A FEEDS=(
+            [cliffs]="$CLIFFS_ICAL_URL"
+            [gardens]="$GARDENS_ICAL_URL"
+          )
+          declare -A PUBLIC=(
             [cliffs]="https://calendar.google.com/calendar/ical/b2a835e6bed7c0910197c6510d83e2183cd6a0ef16dc04db27d6126d82f53f8b%40group.calendar.google.com/public/basic.ics"
             [gardens]="https://calendar.google.com/calendar/ical/38db9cfe40fa5b786c8dda63f375310c28e3a776d2b47db18d12b90c94131042%40group.calendar.google.com/public/basic.ics"
           )
           SHA_BEFORE="$(git rev-parse --short HEAD)"
           WIPE=0
+          PII=0
           : > ical/.wipe_alert.txt
+          : > ical/.pii_alert.txt
 
           # Emit the step outputs on EXIT — including an abnormal abort (a feed's
           # curl 404s, a script raises) part-way through the loop. Writing wipe=
@@ -43,6 +59,11 @@ jobs:
           emit_outputs() {
             local rc=$?
             echo "wipe=$WIPE" >> "$GITHUB_OUTPUT"
+            echo "pii=$PII" >> "$GITHUB_OUTPUT"
+            if [ "$PII" = "1" ]; then
+              # Only the calendar names (no feed content) reach the ledger/email.
+              { echo 'pii_alert<<EOF_PII'; cat ical/.pii_alert.txt; echo 'EOF_PII'; } >> "$GITHUB_OUTPUT"
+            fi
             if [ "$WIPE" = "1" ]; then
               { echo "Run: $RUN_URL"; echo
                 echo "Live site untouched — it still shows the last-good bookings."
@@ -56,8 +77,39 @@ jobs:
           }
           trap emit_outputs EXIT
 
+          for apt in "${!PUBLIC[@]}"; do
+            # PII tripwire: the PUBLIC feed must stay OFF. We sync from the private
+            # feed, so the public URL (burned into git history forever) should be
+            # disabled and 404. If public sharing is ever re-enabled, that URL
+            # serves guest names again — detect it by fetching it: a 200 that
+            # actually carries a VEVENT means it is live and leaking. A 404 means
+            # the public feed is confirmed disabled again, which re-arms the next
+            # leak alert after a clean fix.
+            # grep reads a FILE (not a pipe) so its early exit can't SIGPIPE the
+            # producer and turn a real leak into a silent miss. Alert-only — the
+            # site syncs from the private feed regardless. Deduped via
+            # log_ical_changes so a persisting leak doesn't re-email hourly
+            # (disabling the public feed re-arms the alert).
+            pub="ical/$apt.pubcheck.ics"
+            public_http="$(curl -sS -o "$pub" -w '%{http_code}' "${PUBLIC[$apt]}" || true)"
+            if [ "$public_http" = "200" ] && grep -q '^BEGIN:VEVENT' "$pub"; then
+              pii_status="$(python3 scripts/log_ical_changes.py --apt "$apt" --pii \
+                --changelog ical/changelog.jsonl --run-url "$RUN_URL" --sha "$SHA_BEFORE")"
+              if [ "$pii_status" = "recorded" ]; then
+                echo "Calendar: $apt" >> ical/.pii_alert.txt
+                PII=1
+              else
+                echo "Public feed for $apt already flagged — no new alert."
+              fi
+            elif [ "$public_http" = "404" ]; then
+              python3 scripts/log_ical_changes.py --apt "$apt" --pii-clear \
+                --changelog ical/changelog.jsonl --run-url "$RUN_URL" --sha "$SHA_BEFORE"
+            fi
+          done
+
           for apt in "${!FEEDS[@]}"; do
             curl -fsS "${FEEDS[$apt]}" -o "ical/$apt.raw.ics"
+
             python3 scripts/sanitize_ical.py "ical/$apt.raw.ics" "ical/$apt.candidate.ics"
 
             # before-state = the currently committed live feed (empty if absent)
@@ -92,8 +144,10 @@ jobs:
             fi
           done
 
-          rm -f ical/*.raw.ics ical/*.candidate.ics ical/*.before.ics
-          # Outputs (wipe= and the alert) are emitted by the EXIT trap above.
+          rm -f ical/*.raw.ics ical/*.candidate.ics ical/*.before.ics ical/*.pubcheck.ics
+          # Outputs (wipe=, pii= and the alerts) are emitted by the EXIT trap above.
+          # .pii_alert.txt / .wipe_alert.txt are left for the trap to read, then
+          # discarded with the runner (both are gitignored, never committed).
 
       - name: Commit if changed
         run: |
@@ -120,6 +174,44 @@ jobs:
           to: ${{ vars.ALERT_EMAIL }}
           from: Villa Atlantic Sync <${{ secrets.MAIL_USERNAME }}>
           body: ${{ steps.sync.outputs.alert }}
+
+      - name: Email alert on the public Google Calendar feed being re-enabled
+        if: always() && steps.sync.outputs.pii == '1'
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: '⚠️ Villa Atlantic: Google Calendar public feed is ON again — disable it (guest names exposed in details mode)'
+          to: ${{ vars.ALERT_EMAIL }}
+          from: Villa Atlantic Sync <${{ secrets.MAIL_USERNAME }}>
+          body: |
+            A Google Calendar PUBLIC iCal feed is live again. While public, that
+            URL (which is in this repo's git history forever) serves event data
+            to anyone who fetches it: full event titles — i.e. guest names — if
+            the access level is "See all event details", or nameless "Busy"
+            blocks if it is "See only free/busy". This tripwire cannot tell the
+            two apart; either way the feed must go back OFF.
+
+            Affected calendar(s):
+            ${{ steps.sync.outputs.pii_alert }}
+            The website itself is safe — it syncs from the private feed and the
+            sanitizer strips all details, so atlanticvilla.net still shows only
+            "Booked". This is only about the public Google feed URL.
+
+            Fix (per calendar, in Google Calendar):
+            Settings → select the calendar → "Access permissions for events" →
+            UNCHECK "Make available to public" ("Udostępnij publicznie"). Save.
+            Do NOT just switch it to "free/busy" — that hides names but leaves
+            the public URL live, so this alert will keep tripping. Only
+            unchecking "Make available to public" resolves it; the site keeps
+            syncing from the private feed either way.
+
+            You will not get an hourly repeat while this leak persists. Once
+            you disable the public feed, the alert re-arms; treat any repeat
+            email as the leak being open again.
 
       - name: Fail run if a wipe was blocked
         if: always() && steps.sync.outputs.wipe == '1'

@@ -49,24 +49,21 @@ Dodaj wydarzenie w **obu** kalendarzach (Cliffs + Gardens) na te same daty.
    - Ustawienia → "Dodaj kalendarz" → "Utwórz nowy kalendarz"
    - Nazwy: `Villa Atlantic — Cliffs` i `Villa Atlantic — Gardens`
 
-2. **Udostępnij oba publicznie (tylko odczyt zajętości)**:
+2. **Nie udostępniaj kalendarzy publicznie**:
    - Otwórz ustawienia kalendarza (trzy kropki → Ustawienia)
-   - "Uprawnienia dostępu" → zaznacz "Udostępnij publicznie"
-   - Wybierz **"Zobacz tylko wolny/zajęty (ukryj szczegóły)"** — ważne, żeby nazwiska gości nie były widoczne
+   - "Uprawnienia dostępu" → **nie zaznaczaj** "Udostępnij publicznie"
+   - Jeśli było już włączone, odznacz "Udostępnij publicznie" i zapisz. Publiczny link iCal z historii repo nie może działać.
 
-3. **Pobierz publiczny link iCal** dla każdego kalendarza:
+3. **Pobierz prywatny link iCal** dla każdego kalendarza:
    - W ustawieniach kalendarza → sekcja "Zintegruj kalendarz"
-   - Skopiuj **"Publiczny adres w formacie iCal"** (kończy się na `.ics`)
+   - Skopiuj **"Tajny adres w formacie iCal"** / **"Secret address in iCal format"**
+   - Tego linku nie wklejaj do `index.html` ani do commita.
 
-4. **Wklej 2 linki do `index.html`**:
-   - Otwórz `index.html` w edytorze
-   - Znajdź linie:
-     ```js
-     const ICAL_CLIFFS = 'CLIFFS_ICAL_URL';
-     const ICAL_GARDENS = 'GARDENS_ICAL_URL';
-     ```
-   - Zastąp `'CLIFFS_ICAL_URL'` pełnym linkiem .ics dla Cliffs, analogicznie Gardens
-   - Zapisz
+4. **Dodaj linki jako sekrety GitHub Actions**:
+   - W repo GitHub: Settings → Secrets and variables → Actions → New repository secret
+   - `CLIFFS_ICAL_URL` → prywatny link iCal dla Cliffs
+   - `GARDENS_ICAL_URL` → prywatny link iCal dla Gardens
+   - Workflow zapisuje bezpieczne pliki `ical/cliffs.ics` i `ical/gardens.ics`; strona czyta tylko je.
 
 5. **Udostępnij kalendarze mamie**:
    - W każdym kalendarzu → Ustawienia → "Udostępnij konkretnym osobom"
@@ -98,7 +95,7 @@ W `index.html` są placeholdery do wymiany:
 - `hello@villaatlantic.com` → **email kontaktowy**
 - `+48 000 000 000` → **numer telefonu** (2 miejsca: w atrybucie `href="https://wa.me/..."` i w wyświetlanym tekście)
 - `YOUR_FORMSPREE_ID` (w `<form action=...>`) → **ID formularza Formspree** (załóż darmowe konto na formspree.io i skopiuj endpoint)
-- `CLIFFS_ICAL_URL` i `GARDENS_ICAL_URL` → linki do kalendarzy (patrz wyżej)
+- Sekrety `CLIFFS_ICAL_URL` i `GARDENS_ICAL_URL` w GitHub Actions → prywatne linki iCal (patrz wyżej)
 
 ---
 
