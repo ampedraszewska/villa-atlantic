@@ -178,13 +178,16 @@ jobs:
           secure: true
           username: ${{ secrets.MAIL_USERNAME }}
           password: ${{ secrets.MAIL_PASSWORD }}
-          subject: '⚠️ Villa Atlantic: Google Calendar public feed is ON again — guest names exposed, disable it'
+          subject: '⚠️ Villa Atlantic: Google Calendar public feed is ON again — disable it (guest names exposed in details mode)'
           to: ${{ vars.ALERT_EMAIL }}
           from: Villa Atlantic Sync <${{ secrets.MAIL_USERNAME }}>
           body: |
             A Google Calendar PUBLIC iCal feed is live again. While public, that
-            URL (which is in this repo's git history forever) serves full event
-            titles — i.e. guest names — to anyone who fetches it.
+            URL (which is in this repo's git history forever) serves event data
+            to anyone who fetches it: full event titles — i.e. guest names — if
+            the access level is "See all event details", or nameless "Busy"
+            blocks if it is "See only free/busy". This tripwire cannot tell the
+            two apart; either way the feed must go back OFF.
 
             Affected calendar(s):
             ${{ steps.sync.outputs.pii_alert }}
