@@ -10,5 +10,6 @@ ical/*.raw.ics
 ical/*.candidate.ics
 ical/*.before.ics
 ical/*.suspect.ics
+ical/*.pubcheck.ics
 ical/.wipe_alert.txt
 ical/.pii_alert.txt
