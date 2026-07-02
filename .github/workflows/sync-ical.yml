@@ -77,9 +77,7 @@ jobs:
           }
           trap emit_outputs EXIT
 
-          for apt in "${!FEEDS[@]}"; do
-            curl -fsS "${FEEDS[$apt]}" -o "ical/$apt.raw.ics"
-
+          for apt in "${!PUBLIC[@]}"; do
             # PII tripwire: the PUBLIC feed must stay OFF. We sync from the private
             # feed, so the public URL (burned into git history forever) should be
             # disabled and 404. If public sharing is ever re-enabled, that URL
@@ -107,6 +105,10 @@ jobs:
               python3 scripts/log_ical_changes.py --apt "$apt" --pii-clear \
                 --changelog ical/changelog.jsonl --run-url "$RUN_URL" --sha "$SHA_BEFORE"
             fi
+          done
+
+          for apt in "${!FEEDS[@]}"; do
+            curl -fsS "${FEEDS[$apt]}" -o "ical/$apt.raw.ics"
 
             python3 scripts/sanitize_ical.py "ical/$apt.raw.ics" "ical/$apt.candidate.ics"
 
