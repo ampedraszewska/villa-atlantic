@@ -5,7 +5,7 @@ import pathlib
 import subprocess
 import sys
 
-from log_ical_changes import diff_events, pii_record, quarantine_record
+from log_ical_changes import diff_events, pii_clear_record, pii_record, quarantine_record
 
 SCRIPT = pathlib.Path(__file__).resolve().parent.parent / "scripts" / "log_ical_changes.py"
 
@@ -153,6 +153,11 @@ def test_pii_record_carries_no_event_data():
     assert rec == {"action": "pii_detected"}
 
 
+def test_pii_clear_record_carries_no_event_data():
+    rec = pii_clear_record()
+    assert rec == {"action": "pii_cleared"}
+
+
 def _run_pii(log, run_n):
     return subprocess.run(
         [
@@ -161,6 +166,27 @@ def _run_pii(log, run_n):
             "--apt",
             "cliffs",
             "--pii",
+            "--changelog",
+            str(log),
+            "--run-url",
+            f"http://run/{run_n}",
+            "--sha",
+            f"sha{run_n}",
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+
+
+def _run_pii_clear(log, run_n):
+    return subprocess.run(
+        [
+            sys.executable,
+            str(SCRIPT),
+            "--apt",
+            "cliffs",
+            "--pii-clear",
             "--changelog",
             str(log),
             "--run-url",
@@ -189,6 +215,21 @@ def test_pii_is_idempotent_across_runs(tmp_path):
     assert entry["apartment"] == "cliffs"
     # No guest data of any kind in the committed record.
     assert set(entry) == {"action", "apartment", "detected_at", "run_url", "sha_before"}
+
+
+def test_pii_clear_rearms_later_detection(tmp_path):
+    log = tmp_path / "changelog.jsonl"
+    assert _run_pii(log, 1) == "recorded"
+    assert _run_pii_clear(log, 2) == "cleared"
+    assert _run_pii_clear(log, 3) == "clear"
+    assert _run_pii(log, 4) == "recorded"
+
+    lines = [json.loads(line) for line in log.read_text(encoding="utf-8").splitlines()]
+    assert [entry["action"] for entry in lines] == [
+        "pii_detected",
+        "pii_cleared",
+        "pii_detected",
+    ]
 
 
 def test_pii_re_records_after_intervening_change(tmp_path):

@@ -16,6 +16,7 @@ One JSON object per line. Diff actions:
     pii_detected  emitted when the raw Google feed exposed guest details
                  (sharing misconfigured to show event details); alert-only,
                  never carries names — the sanitizer keeps the public feed safe
+    pii_cleared   emitted when the public Google feed is confirmed disabled
 
 ``created`` / ``last_modified`` are Google's own timestamps, lifted from the raw
 feed (the sanitized feed strips them). ``detected_at`` + ``run_url`` + ``sha``
@@ -34,6 +35,10 @@ CLI (used by the sync workflow):
 
     # record guest details leaking in the raw public feed (alert-only, no names)
     python3 scripts/log_ical_changes.py --apt cliffs --pii \\
+        --changelog ical/changelog.jsonl --run-url URL --sha SHA
+
+    # record that the public feed is confirmed disabled again
+    python3 scripts/log_ical_changes.py --apt cliffs --pii-clear \\
         --changelog ical/changelog.jsonl --run-url URL --sha SHA
 """
 
@@ -152,6 +157,11 @@ def pii_record() -> dict:
     return {"action": "pii_detected"}
 
 
+def pii_clear_record() -> dict:
+    """One record re-arming the PII tripwire after the public feed is disabled."""
+    return {"action": "pii_cleared"}
+
+
 def _stamp(record: dict, apt: str, detected_at: str, run_url: str, sha: str) -> dict:
     """Prefix shared metadata onto a record (apartment + when-we-noticed)."""
     return {
@@ -227,6 +237,7 @@ def _main() -> int:
     ap.add_argument(
         "--pii", action="store_true", help="record guest details leaking in the raw feed"
     )
+    ap.add_argument("--pii-clear", action="store_true", help="record public feed disabled")
     ap.add_argument("--run-url", default="", help="GitHub Actions run URL")
     ap.add_argument("--sha", default="", help="commit sha of the before-state")
     ap.add_argument("--detected-at", default=None, help="override timestamp (ISO 8601 Z)")
@@ -243,6 +254,12 @@ def _main() -> int:
             print("already")
             return 0
         records = [pii_record()]
+    elif args.pii_clear:
+        prev = _last_record_for(out, args.apt, ignore_actions=("quarantined",))
+        if not prev or prev.get("action") != "pii_detected":
+            print("clear")
+            return 0
+        records = [pii_clear_record()]
     elif args.quarantined:
         new_rec = quarantine_record(_read(args.before))
         prev = _last_record_for(out, args.apt, ignore_actions=("pii_detected",))
@@ -262,7 +279,9 @@ def _main() -> int:
         for rec in records:
             line = _stamp(rec, args.apt, detected_at, args.run_url, args.sha)
             fh.write(json.dumps(line, ensure_ascii=False) + "\n")
-    if args.quarantined or args.pii:
+    if args.pii_clear:
+        print("cleared")
+    elif args.quarantined or args.pii:
         print("recorded")
     return 0
 

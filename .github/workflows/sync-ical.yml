@@ -84,16 +84,17 @@ jobs:
             # feed, so the public URL (burned into git history forever) should be
             # disabled and 404. If public sharing is ever re-enabled, that URL
             # serves guest names again — detect it by fetching it: a 200 that
-            # actually carries a VEVENT means it is live and leaking. curl -fsS
-            # fails (non-zero) on the expected 404, short-circuiting the &&.
+            # actually carries a VEVENT means it is live and leaking. A 404 means
+            # the public feed is confirmed disabled again, which re-arms the next
+            # leak alert after a clean fix.
             # grep reads a FILE (not a pipe) so its early exit can't SIGPIPE the
             # producer and turn a real leak into a silent miss. Alert-only — the
             # site syncs from the private feed regardless. Deduped via
             # log_ical_changes so a persisting leak doesn't re-email hourly
-            # (a booking change on the calendar can re-arm the alert).
+            # (disabling the public feed re-arms the alert).
             pub="ical/$apt.pubcheck.ics"
-            if curl -fsS "${PUBLIC[$apt]}" -o "$pub" 2>/dev/null \
-               && grep -q '^BEGIN:VEVENT' "$pub"; then
+            public_http="$(curl -sS -o "$pub" -w '%{http_code}' "${PUBLIC[$apt]}" || true)"
+            if [ "$public_http" = "200" ] && grep -q '^BEGIN:VEVENT' "$pub"; then
               pii_status="$(python3 scripts/log_ical_changes.py --apt "$apt" --pii \
                 --changelog ical/changelog.jsonl --run-url "$RUN_URL" --sha "$SHA_BEFORE")"
               if [ "$pii_status" = "recorded" ]; then
@@ -102,6 +103,9 @@ jobs:
               else
                 echo "Public feed for $apt already flagged — no new alert."
               fi
+            elif [ "$public_http" = "404" ]; then
+              python3 scripts/log_ical_changes.py --apt "$apt" --pii-clear \
+                --changelog ical/changelog.jsonl --run-url "$RUN_URL" --sha "$SHA_BEFORE"
             fi
 
             python3 scripts/sanitize_ical.py "ical/$apt.raw.ics" "ical/$apt.candidate.ics"
@@ -203,9 +207,9 @@ jobs:
             unchecking "Make available to public" resolves it; the site keeps
             syncing from the private feed either way.
 
-            You will not get an hourly repeat while this leak persists, but a
-            booking change on the calendar can re-arm the alert — treat any
-            repeat email as the leak still being open.
+            You will not get an hourly repeat while this leak persists. Once
+            you disable the public feed, the alert re-arms; treat any repeat
+            email as the leak being open again.
 
       - name: Fail run if a wipe was blocked
         if: always() && steps.sync.outputs.wipe == '1'
