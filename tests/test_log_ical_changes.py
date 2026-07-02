@@ -334,4 +334,6 @@ def test_pii_and_quarantine_guards_ignore_each_other(tmp_path):
     assert _run_quarantine(before, log, 2) == "duplicate"
     assert _run_pii(log, 3) == "already"
     assert _run_quarantine(before, log, 3) == "duplicate"
-    assert len(log.read_text(encoding="utf-8").splitlines()) == 2
+    assert _run_pii_clear(log, 4) == "cleared"
+    assert _run_quarantine(before, log, 4) == "duplicate"
+    assert len(log.read_text(encoding="utf-8").splitlines()) == 3

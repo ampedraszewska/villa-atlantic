@@ -269,7 +269,7 @@ def _main() -> int:
         records = [pii_clear_record()]
     elif args.quarantined:
         new_rec = quarantine_record(_read(args.before))
-        prev = _last_record_for(out, args.apt, ignore_actions=("pii_detected",))
+        prev = _last_record_for(out, args.apt, ignore_actions=("pii_detected", "pii_cleared"))
         if _same_quarantine(prev, new_rec):
             # Same wipe already quarantined; don't re-log/re-alert every hour.
             print("duplicate")
