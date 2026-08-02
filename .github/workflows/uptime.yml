@@ -162,9 +162,11 @@ jobs:
               echo
             fi
             if [ ! -s heal.txt ] && [ ! -s notes.txt ]; then
-              echo "The GitHub Pages configuration was correct, so the cause is outside this"
-              echo "repo — DNS, the domain registrar, TLS, or a GitHub incident. Fixing it"
-              echo "needs a human."
+              echo "The GitHub Pages configuration was already correct, so nothing was"
+              echo "repaired. The cause is whatever the failing check above points at: DNS,"
+              echo "the domain registrar, TLS or a GitHub incident for the page and"
+              echo "certificate checks, a missing or malformed file under ical/ for the"
+              echo "calendar ones. Fixing it needs a human."
               echo
             fi
             if [ "${{ steps.recheck.outcome }}" = "success" ]; then
