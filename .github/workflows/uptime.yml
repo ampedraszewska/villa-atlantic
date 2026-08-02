@@ -1,0 +1,84 @@
+name: Uptime canary
+
+# Fetches the LIVE site every 15 minutes and, when the outage is caused by the
+# repo's own GitHub Pages configuration, puts that configuration back without a
+# human. On 2026-08-02 the Pages site was disabled in repo settings: DNS, TLS,
+# the sanitiser, the hourly sync and every workflow stayed green while the site
+# served GitHub's 404 for an unknown number of days, because nothing here ever
+# fetched the live origin.
+#
+# The run is RED whenever the site was found down — healed or not. That is the
+# whole alerting mechanism (no email on purpose), so a heal must never hide
+# itself behind a green tick.
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write # lets GITHUB_TOKEN restore a wiped Pages config unattended
+
+jobs:
+  canary:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the live site
+        id: check
+        continue-on-error: true # heal + re-check first; the re-check fails the run
+        run: python3 scripts/check_site.py
+
+      - name: Restore the GitHub Pages configuration
+        if: steps.check.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          # CNAME is the single source of truth for the domain — the same file
+          # GitHub Pages itself reads, so the two cannot drift apart.
+          DOMAIN="$(cat CNAME)"
+          note() { echo "$1"; echo "- $1" >> "$GITHUB_STEP_SUMMARY"; }
+
+          if ! gh api "repos/$REPO/pages" > pages.json 2>/dev/null; then
+            note "Pages site was GONE — recreating it from main:/"
+            gh api -X POST "repos/$REPO/pages" -f 'source[branch]=main' -f 'source[path]=/'
+            gh api -X PUT "repos/$REPO/pages" -f "cname=$DOMAIN"
+          else
+            branch="$(jq -r '.source.branch // ""' pages.json)"
+            path="$(jq -r '.source.path // ""' pages.json)"
+            cname="$(jq -r '.cname // ""' pages.json)"
+            if [ "$branch" != "main" ] || [ "$path" != "/" ]; then
+              note "Pages source was $branch:$path — resetting to main:/"
+              gh api -X PUT "repos/$REPO/pages" -f 'source[branch]=main' -f 'source[path]=/'
+            fi
+            if [ "$cname" != "$DOMAIN" ]; then
+              note "Custom domain was '${cname:-<empty>}' — resetting to $DOMAIN"
+              gh api -X PUT "repos/$REPO/pages" -f "cname=$DOMAIN"
+            fi
+          fi
+
+          # Best effort: HTTPS cannot be enforced until the certificate for a
+          # freshly (re)attached domain finishes provisioning. The next run
+          # picks it up.
+          if [ "$(gh api "repos/$REPO/pages" --jq '.https_enforced')" != "true" ]; then
+            gh api -X PUT "repos/$REPO/pages" -F 'https_enforced=true' \
+              && note "Re-enabled Enforce HTTPS" \
+              || note "Could not enforce HTTPS yet (certificate still provisioning)"
+          fi
+          rm -f pages.json
+
+      - name: Re-check, and fail the run so the outage stays visible
+        if: steps.check.outcome == 'failure'
+        run: |
+          # A Pages rebuild after a config change takes about a minute.
+          sleep 120
+          if python3 scripts/check_site.py; then
+            echo "::error::Site was DOWN; the Pages config was restored automatically and the site is back."
+          else
+            echo "::error::Site is DOWN and repo Pages config was not the cause — check DNS, TLS and the domain registrar."
+          fi
+          exit 1
