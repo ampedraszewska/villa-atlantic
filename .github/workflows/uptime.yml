@@ -7,9 +7,10 @@ name: Uptime canary
 # served GitHub's 404 for an unknown number of days, because nothing here ever
 # fetched the live origin.
 #
-# The run is RED whenever the site was found down — healed or not. That is the
-# whole alerting mechanism (no email on purpose), so a heal must never hide
-# itself behind a green tick.
+# Alerting is a GitHub issue rather than email on purpose: it needs no SMTP
+# credentials, GitHub notifies the repo owner through the normal channel, one
+# open issue de-duplicates the alert across a long outage, and the issue closes
+# itself once the site is healthy again.
 
 on:
   schedule:
@@ -19,29 +20,40 @@ on:
 permissions:
   contents: read
   pages: write # lets GITHUB_TOKEN restore a wiped Pages config unattended
+  issues: write # the alert channel
 
 jobs:
   canary:
     runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      LABEL: uptime
     steps:
       - uses: actions/checkout@v4
 
+      - name: Ensure the alert label exists
+        # Both the open and the close step filter by this label, and `gh issue
+        # list --label` errors on a label that does not exist yet.
+        run: gh label create "$LABEL" --color B60205 --description "Live-site canary" 2>/dev/null || true
+
       - name: Check the live site
         id: check
-        continue-on-error: true # heal + re-check first; the re-check fails the run
-        run: python3 scripts/check_site.py
+        continue-on-error: true # heal + re-check first; a later step fails the run
+        run: python3 scripts/check_site.py | tee report.txt
 
       - name: Restore the GitHub Pages configuration
         if: steps.check.outcome == 'failure'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          REPO: ${{ github.repository }}
+        # A failure here must not skip the alert steps below — a repair that
+        # itself breaks is exactly when the issue needs to be filed.
+        continue-on-error: true
         run: |
           set -euo pipefail
           # CNAME is the single source of truth for the domain — the same file
           # GitHub Pages itself reads, so the two cannot drift apart.
           DOMAIN="$(cat CNAME)"
-          note() { echo "$1"; echo "- $1" >> "$GITHUB_STEP_SUMMARY"; }
+          note() { echo "$1"; echo "- $1" | tee -a heal.txt >> "$GITHUB_STEP_SUMMARY"; }
 
           if ! gh api "repos/$REPO/pages" > pages.json 2>/dev/null; then
             note "Pages site was GONE — recreating it from main:/"
@@ -65,20 +77,71 @@ jobs:
           # freshly (re)attached domain finishes provisioning. The next run
           # picks it up.
           if [ "$(gh api "repos/$REPO/pages" --jq '.https_enforced')" != "true" ]; then
-            gh api -X PUT "repos/$REPO/pages" -F 'https_enforced=true' \
-              && note "Re-enabled Enforce HTTPS" \
-              || note "Could not enforce HTTPS yet (certificate still provisioning)"
+            if gh api -X PUT "repos/$REPO/pages" -F 'https_enforced=true'; then
+              note "Re-enabled Enforce HTTPS"
+            else
+              note "Could not enforce HTTPS yet (certificate still provisioning)"
+            fi
           fi
           rm -f pages.json
 
-      - name: Re-check, and fail the run so the outage stays visible
+      - name: Re-check after the repair
+        id: recheck
         if: steps.check.outcome == 'failure'
+        continue-on-error: true
         run: |
           # A Pages rebuild after a config change takes about a minute.
           sleep 120
-          if python3 scripts/check_site.py; then
-            echo "::error::Site was DOWN; the Pages config was restored automatically and the site is back."
+          python3 scripts/check_site.py | tee report.txt
+
+      - name: Open an alert issue
+        if: steps.check.outcome == 'failure'
+        run: |
+          set -euo pipefail
+          open="$(gh issue list --label "$LABEL" --state open --limit 1 --json number --jq '.[0].number // ""')"
+          if [ -n "$open" ]; then
+            echo "#$open is already open for this outage — not filing a duplicate."
+            exit 0
+          fi
+          {
+            cat report.txt
+            echo
+            if [ -s heal.txt ]; then
+              echo "Repaired automatically:"
+              cat heal.txt
+            else
+              echo "The GitHub Pages configuration was correct, so the cause is outside this"
+              echo "repo — DNS, the domain registrar, TLS, or a GitHub incident. Fixing it"
+              echo "needs a human."
+            fi
+            echo
+            if [ "${{ steps.recheck.outcome }}" = "success" ]; then
+              echo "The site is answering correctly again."
+            else
+              echo "The site is STILL down after the repair attempt."
+            fi
+            echo
+            echo "Run: $RUN_URL"
+            echo
+            echo "This issue closes itself once the canary sees the site healthy."
+          } > body.md
+          gh issue create --title "$(head -1 report.txt)" --label "$LABEL" --body-file body.md
+
+      - name: Close the alert issue once the site is healthy
+        if: steps.check.outcome == 'success'
+        run: |
+          set -euo pipefail
+          for n in $(gh issue list --label "$LABEL" --state open --json number --jq '.[].number'); do
+            gh issue comment "$n" --body "The site is healthy again — all checks passed in $RUN_URL"
+            gh issue close "$n"
+          done
+
+      - name: Fail the run so the outage stays in the Actions history
+        if: steps.check.outcome == 'failure'
+        run: |
+          if [ "${{ steps.recheck.outcome }}" = "success" ]; then
+            echo "::error::Site was DOWN and is healthy again after the automatic repair."
           else
-            echo "::error::Site is DOWN and repo Pages config was not the cause — check DNS, TLS and the domain registrar."
+            echo "::error::Site is DOWN and still failing after the automatic repair."
           fi
           exit 1

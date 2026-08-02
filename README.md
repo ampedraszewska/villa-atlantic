@@ -113,7 +113,9 @@ Konfiguracja, gdyby trzeba było ją kiedyś odtworzyć:
 
 Co 15 minut pobiera **żywą** stronę i sprawdza, że naprawdę serwuje willę: HTTP 200 + treść naszej strony (nie parkingu domeny ani 404 GitHuba), oba kanały `ical/*.ics` jako prawidłowy `BEGIN:VCALENDAR`, oraz certyfikat TLS ważny jeszcze ponad 14 dni.
 
-Jeśli przyczyną jest konfiguracja Pages w repo (wyłączone Pages, skasowana domena, zmieniona gałąź) — canary **sam ją przywraca** i strona wraca bez udziału człowieka. Run i tak kończy się na czerwono, żeby awaria była widoczna w zakładce Actions (celowo bez maili).
+Jeśli przyczyną jest konfiguracja Pages w repo (wyłączone Pages, skasowana domena, zmieniona gałąź) — canary **sam ją przywraca** i strona wraca bez udziału człowieka. Run i tak kończy się na czerwono, żeby awaria została w historii Actions.
+
+**Alert = issue na GitHubie** z etykietą `uptime` (powiadomienie mailowe przychodzi normalnym kanałem GitHuba). Świadomie nie SMTP: nie wymaga żadnych sekretów ani hasła aplikacji Gmail. Jedno otwarte issue na całą awarię — kolejne przebiegi nie duplikują alertu — a gdy canary zobaczy zdrową stronę, sam dopisuje komentarz i zamyka issue.
 
 Powód: 2026-08-02 ktoś wyłączył Pages w ustawieniach repo. DNS, TLS, sanitizer i godzinna synchronizacja kalendarzy działały dalej na zielono, a strona przez ten czas zwracała 404 GitHuba — bo nic nigdy nie pobierało żywej strony.
 
