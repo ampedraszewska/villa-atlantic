@@ -77,7 +77,21 @@ jobs:
           # Every repair notes AFTER the call it describes, and warns when that
           # call fails: `set -e` would otherwise abort the step with heal.txt
           # already claiming a repair that never landed.
-          if ! gh api "repos/$REPO/pages" > pages.json 2>/dev/null; then
+          if ! api_err="$(gh api "repos/$REPO/pages" 2>&1 >pages.json)"; then
+            # `gh api` exits non-zero on ANY HTTP error, so a failed read is not by
+            # itself evidence that Pages is off. Only a 404 means there is no site.
+            # On anything else — a 5xx, a rate limit, a token that lost the scope,
+            # i.e. exactly what a GitHub incident looks like from here — the config
+            # is merely unknown, and recreating it would 409 and leave the issue
+            # telling whoever is on call to re-enable a site that was never off.
+            case "$api_err" in
+              *'(HTTP 404)'*) ;; # no Pages site at all — recreate it below
+              *)
+                warn "Could not read the Pages configuration, so it was left untouched: $api_err"
+                rm -f pages.json
+                exit 0
+                ;;
+            esac
             if gh api -X POST "repos/$REPO/pages" -f 'source[branch]=main' -f 'source[path]=/' \
                && gh api -X PUT "repos/$REPO/pages" -f "cname=$DOMAIN"; then
               note "Pages site was GONE — recreated it from main:/ on $DOMAIN"
