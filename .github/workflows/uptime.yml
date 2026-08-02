@@ -166,7 +166,12 @@ jobs:
         if: steps.check.outcome == 'failure'
         run: |
           set -euo pipefail
-          open="$(gh issue list --label "$LABEL" --state open --limit 1 --json number --jq '.[0].number // ""')"
+          # A failed lookup must not abort the step: `set -e` would leave the
+          # outputs empty and skip the email too, losing both alert channels to
+          # one API hiccup — the same reason the outputs below are written before
+          # `gh issue create`. An unreadable issue list means "not deduplicated",
+          # which costs at most one duplicate issue and email.
+          open="$(gh issue list --label "$LABEL" --state open --limit 1 --json number --jq '.[0].number // ""')" || open=""
           if [ -n "$open" ]; then
             echo "#$open is already open for this outage — not filing a duplicate."
             exit 0
