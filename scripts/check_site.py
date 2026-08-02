@@ -109,7 +109,14 @@ def main() -> int:
         help="Domain to check (default: the contents of the repo's CNAME file).",
     )
     args = parser.parse_args()
-    domain = args.domain or production_domain()
+    try:
+        domain = args.domain or production_domain()
+    except OSError as e:
+        # A deleted CNAME is itself an outage (Pages falls back to the
+        # github.io host). Report it as one: a traceback would leave the
+        # workflow with an empty report and therefore no alert at all.
+        print(f"DOWN — cannot read {CNAME_FILE}: {e}")
+        return 1
 
     failures = run_checks(domain)
     if failures:

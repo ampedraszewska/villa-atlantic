@@ -7,8 +7,9 @@ the ones that fail on a *plausible* wrong answer, and those are what is pinned
 here.
 """
 
+import check_site
 import pytest
-from check_site import check_cert, check_ics, check_page, production_domain, run_checks
+from check_site import check_cert, check_ics, check_page, main, production_domain, run_checks
 
 REAL_PAGE = '<html><head><title>Villa Atlantic</title><link rel="canonical" href="/"></head></html>'
 GITHUB_404 = "<html><head><title>Site not found &middot; GitHub Pages</title></head></html>"
@@ -99,3 +100,21 @@ def test_run_checks_passes_on_a_fully_healthy_site():
 def test_domain_comes_from_the_cname_file():
     """Pages reads CNAME too; a second hardcoded copy is how the two drift apart."""
     assert production_domain() == "atlanticvilla.net"
+
+
+def test_missing_cname_reports_an_outage_instead_of_a_traceback(monkeypatch, capsys):
+    """A deleted CNAME is an outage, and the workflow builds its alert from stdout.
+
+    A traceback goes to stderr and leaves stdout empty, which would file the
+    alert issue with a blank title and no body — the one outage nobody hears
+    about.
+    """
+
+    def gone(*args, **kwargs):
+        raise FileNotFoundError(2, "No such file or directory")
+
+    monkeypatch.setattr(check_site, "production_domain", gone)
+    monkeypatch.setattr("sys.argv", ["check_site.py"])
+
+    assert main() == 1
+    assert capsys.readouterr().out.startswith("DOWN")
