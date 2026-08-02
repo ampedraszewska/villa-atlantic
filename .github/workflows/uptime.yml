@@ -56,10 +56,21 @@ jobs:
         continue-on-error: true
         run: |
           set -euo pipefail
+          # heal.txt is what the alert issue reports as repaired, so only
+          # changes that actually landed go there; everything this step could
+          # diagnose but not fix goes to notes.txt.
+          log_to() { echo "$2"; echo "- $2" | tee -a "$1" >> "$GITHUB_STEP_SUMMARY"; }
+          note() { log_to heal.txt "$1"; }
+          warn() { log_to notes.txt "$1"; }
+
           # CNAME is the single source of truth for the domain — the same file
-          # GitHub Pages itself reads, so the two cannot drift apart.
-          DOMAIN="$(cat CNAME)"
-          note() { echo "$1"; echo "- $1" | tee -a heal.txt >> "$GITHUB_STEP_SUMMARY"; }
+          # GitHub Pages itself reads, so the two cannot drift apart. Without it
+          # there is no domain to restore, and `set -e` would otherwise kill the
+          # step here and leave the issue blaming DNS for a missing file.
+          if ! DOMAIN="$(cat CNAME 2>/dev/null)" || [ -z "$DOMAIN" ]; then
+            warn "The CNAME file is missing from the repo — restore it to bring the custom domain back"
+            exit 0
+          fi
 
           if ! gh api "repos/$REPO/pages" > pages.json 2>/dev/null; then
             note "Pages site was GONE — recreating it from main:/"
@@ -92,7 +103,7 @@ jobs:
             if gh api -X PUT "repos/$REPO/pages" -F 'https_enforced=true'; then
               note "Re-enabled Enforce HTTPS"
             else
-              note "Could not enforce HTTPS yet (certificate still provisioning)"
+              warn "Could not enforce HTTPS yet (certificate still provisioning)"
             fi
           fi
           rm -f pages.json
@@ -123,12 +134,19 @@ jobs:
             if [ -s heal.txt ]; then
               echo "Repaired automatically:"
               cat heal.txt
-            else
+              echo
+            fi
+            if [ -s notes.txt ]; then
+              echo "Found but not repaired from here:"
+              cat notes.txt
+              echo
+            fi
+            if [ ! -s heal.txt ] && [ ! -s notes.txt ]; then
               echo "The GitHub Pages configuration was correct, so the cause is outside this"
               echo "repo — DNS, the domain registrar, TLS, or a GitHub incident. Fixing it"
               echo "needs a human."
+              echo
             fi
-            echo
             if [ "${{ steps.recheck.outcome }}" = "success" ]; then
               echo "The site is answering correctly again."
             else
