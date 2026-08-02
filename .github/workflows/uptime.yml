@@ -72,10 +72,16 @@ jobs:
             exit 0
           fi
 
+          # Every repair notes AFTER the call it describes, and warns when that
+          # call fails: `set -e` would otherwise abort the step with heal.txt
+          # already claiming a repair that never landed.
           if ! gh api "repos/$REPO/pages" > pages.json 2>/dev/null; then
-            note "Pages site was GONE — recreating it from main:/"
-            gh api -X POST "repos/$REPO/pages" -f 'source[branch]=main' -f 'source[path]=/'
-            gh api -X PUT "repos/$REPO/pages" -f "cname=$DOMAIN"
+            if gh api -X POST "repos/$REPO/pages" -f 'source[branch]=main' -f 'source[path]=/' \
+               && gh api -X PUT "repos/$REPO/pages" -f "cname=$DOMAIN"; then
+              note "Pages site was GONE — recreated it from main:/ on $DOMAIN"
+            else
+              warn "Pages site is GONE and could not be recreated from here — re-enable it under Settings → Pages (branch main, folder /, custom domain $DOMAIN)"
+            fi
           else
             branch="$(jq -r '.source.branch // ""' pages.json)"
             path="$(jq -r '.source.path // ""' pages.json)"
@@ -86,13 +92,19 @@ jobs:
             # healthy config forever.
             build="$(jq -r '.build_type // ""' pages.json)"
             if [ "$branch" != "main" ] || [ "$path" != "/" ] || [ "$build" != "legacy" ]; then
-              note "Pages source was $build $branch:$path — resetting to a main:/ branch build"
-              gh api -X PUT "repos/$REPO/pages" \
-                -f 'build_type=legacy' -f 'source[branch]=main' -f 'source[path]=/'
+              if gh api -X PUT "repos/$REPO/pages" \
+                   -f 'build_type=legacy' -f 'source[branch]=main' -f 'source[path]=/'; then
+                note "Pages source was $build $branch:$path — reset to a main:/ branch build"
+              else
+                warn "Pages source is $build $branch:$path and could not be reset from here — set it to branch main, folder / under Settings → Pages"
+              fi
             fi
             if [ "$cname" != "$DOMAIN" ]; then
-              note "Custom domain was '${cname:-<empty>}' — resetting to $DOMAIN"
-              gh api -X PUT "repos/$REPO/pages" -f "cname=$DOMAIN"
+              if gh api -X PUT "repos/$REPO/pages" -f "cname=$DOMAIN"; then
+                note "Custom domain was '${cname:-<empty>}' — reset to $DOMAIN"
+              else
+                warn "Custom domain is '${cname:-<empty>}' and could not be reset from here — set it to $DOMAIN under Settings → Pages"
+              fi
             fi
           fi
 
