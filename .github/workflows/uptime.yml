@@ -22,6 +22,12 @@ permissions:
   pages: write # lets GITHUB_TOKEN restore a wiped Pages config unattended
   issues: write # the alert channel
 
+defaults:
+  run:
+    # Without this the implicit shell is `bash -e {0}` — no pipefail — and every
+    # `check_site.py | tee` below would exit 0 no matter what the canary found.
+    shell: bash
+
 jobs:
   canary:
     runs-on: ubuntu-latest
@@ -63,9 +69,15 @@ jobs:
             branch="$(jq -r '.source.branch // ""' pages.json)"
             path="$(jq -r '.source.path // ""' pages.json)"
             cname="$(jq -r '.cname // ""' pages.json)"
-            if [ "$branch" != "main" ] || [ "$path" != "/" ]; then
-              note "Pages source was $branch:$path — resetting to main:/"
-              gh api -X PUT "repos/$REPO/pages" -f 'source[branch]=main' -f 'source[path]=/'
+            # build_type flips to "workflow" the moment someone picks "GitHub
+            # Actions" as the source. .source keeps reporting main:/ while
+            # nothing is deployed from it, so branch and path alone would see a
+            # healthy config forever.
+            build="$(jq -r '.build_type // ""' pages.json)"
+            if [ "$branch" != "main" ] || [ "$path" != "/" ] || [ "$build" != "legacy" ]; then
+              note "Pages source was $build $branch:$path — resetting to a main:/ branch build"
+              gh api -X PUT "repos/$REPO/pages" \
+                -f 'build_type=legacy' -f 'source[branch]=main' -f 'source[path]=/'
             fi
             if [ "$cname" != "$DOMAIN" ]; then
               note "Custom domain was '${cname:-<empty>}' — resetting to $DOMAIN"
@@ -90,9 +102,11 @@ jobs:
         if: steps.check.outcome == 'failure'
         continue-on-error: true
         run: |
-          # A Pages rebuild after a config change takes about a minute.
+          # A Pages rebuild after a config change takes about a minute. Its own
+          # file: report.txt is what the alert issue is built from, and that has
+          # to stay the list of checks that actually failed.
           sleep 120
-          python3 scripts/check_site.py | tee report.txt
+          python3 scripts/check_site.py | tee recheck.txt
 
       - name: Open an alert issue
         if: steps.check.outcome == 'failure'
