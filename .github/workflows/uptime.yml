@@ -193,18 +193,24 @@ jobs:
             echo
             echo "This issue closes itself once the canary sees the site healthy."
           } > body.md
-          gh issue create --title "$(head -1 report.txt)" --label "$LABEL" --body-file body.md
 
-          # The de-duplication above already ran, so these outputs are set only
-          # on the run that opens the issue — a long outage sends one email, not
-          # one every 15 minutes.
+          # Set BEFORE the issue is filed: `set -e` would otherwise abort the step
+          # on a GitHub API failure with the outputs still empty, which skips the
+          # email too — both alert channels lost to one API hiccup, during the very
+          # incident that may have taken the site down. The de-duplication above
+          # already ran, so these are still written only on the run that opens the
+          # issue: a long outage sends one email, not one every 15 minutes.
           echo "subject=$(head -1 report.txt)" >> "$GITHUB_OUTPUT"
           { echo 'body<<EOF_BODY'; cat body.md; echo 'EOF_BODY'; } >> "$GITHUB_OUTPUT"
 
+          gh issue create --title "$(head -1 report.txt)" --label "$LABEL" --body-file body.md
+
       - name: Email the alert
         # Same action, secrets and recipient as the sync-ical.yml alerts, so an
-        # outage arrives where the calendar alerts already arrive.
-        if: steps.alert.outputs.subject != ''
+        # outage arrives where the calendar alerts already arrive. always() so a
+        # step above that failed after setting these outputs — `gh issue create`
+        # hitting the API — still gets the outage emailed.
+        if: always() && steps.alert.outputs.subject != ''
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: smtp.gmail.com
