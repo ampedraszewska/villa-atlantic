@@ -7,10 +7,12 @@ name: Uptime canary
 # served GitHub's 404 for an unknown number of days, because nothing here ever
 # fetched the live origin.
 #
-# Alerting is a GitHub issue rather than email on purpose: it needs no SMTP
-# credentials, GitHub notifies the repo owner through the normal channel, one
-# open issue de-duplicates the alert across a long outage, and the issue closes
-# itself once the site is healthy again.
+# The alert is a GitHub issue plus an email over the same SMTP secrets
+# sync-ical.yml already uses, so an outage lands on the channel the calendar
+# alerts already land on. The issue holds the outage state: one open issue
+# de-duplicates the alert across a long outage, the email is sent only when that
+# issue is first filed, and the issue closes itself once the site is healthy
+# again.
 
 on:
   schedule:
@@ -132,6 +134,7 @@ jobs:
           python3 scripts/check_site.py | tee recheck.txt
 
       - name: Open an alert issue
+        id: alert
         if: steps.check.outcome == 'failure'
         run: |
           set -euo pipefail
@@ -170,6 +173,28 @@ jobs:
             echo "This issue closes itself once the canary sees the site healthy."
           } > body.md
           gh issue create --title "$(head -1 report.txt)" --label "$LABEL" --body-file body.md
+
+          # The de-duplication above already ran, so these outputs are set only
+          # on the run that opens the issue — a long outage sends one email, not
+          # one every 15 minutes.
+          echo "subject=$(head -1 report.txt)" >> "$GITHUB_OUTPUT"
+          { echo 'body<<EOF_BODY'; cat body.md; echo 'EOF_BODY'; } >> "$GITHUB_OUTPUT"
+
+      - name: Email the alert
+        # Same action, secrets and recipient as the sync-ical.yml alerts, so an
+        # outage arrives where the calendar alerts already arrive.
+        if: steps.alert.outputs.subject != ''
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: '⚠️ Villa Atlantic: ${{ steps.alert.outputs.subject }}'
+          to: ${{ vars.ALERT_EMAIL }}
+          from: Villa Atlantic Canary <${{ secrets.MAIL_USERNAME }}>
+          body: ${{ steps.alert.outputs.body }}
 
       - name: Close the alert issue once the site is healthy
         if: steps.check.outcome == 'success'

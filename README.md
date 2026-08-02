@@ -115,7 +115,7 @@ Co 15 minut pobiera **żywą** stronę i sprawdza, że naprawdę serwuje willę:
 
 Jeśli przyczyną jest konfiguracja Pages w repo (wyłączone Pages, skasowana domena, zmieniona gałąź) — canary **sam ją przywraca** i strona wraca bez udziału człowieka. Run i tak kończy się na czerwono, żeby awaria została w historii Actions.
 
-**Alert = issue na GitHubie** z etykietą `uptime` (powiadomienie mailowe przychodzi normalnym kanałem GitHuba). Świadomie nie SMTP: nie wymaga żadnych sekretów ani hasła aplikacji Gmail. Jedno otwarte issue na całą awarię — kolejne przebiegi nie duplikują alertu — a gdy canary zobaczy zdrową stronę, sam dopisuje komentarz i zamyka issue.
+**Alert = issue na GitHubie** z etykietą `uptime` **plus mail** na `ALERT_EMAIL` — tą samą akcją i tymi samymi sekretami (`MAIL_USERNAME`, `MAIL_PASSWORD`) co alerty synchronizacji kalendarzy, więc awaria strony trafia tam, gdzie już trafiają alerty o kalendarzu. Stan awarii trzyma issue: jedno otwarte issue na całą awarię, kolejne przebiegi nie duplikują ani issue, ani maila, a gdy canary zobaczy zdrową stronę, sam dopisuje komentarz i zamyka issue.
 
 Powód: 2026-08-02 ktoś wyłączył Pages w ustawieniach repo. DNS, TLS, sanitizer i godzinna synchronizacja kalendarzy działały dalej na zielono, a strona przez ten czas zwracała 404 GitHuba — bo nic nigdy nie pobierało żywej strony.
 
