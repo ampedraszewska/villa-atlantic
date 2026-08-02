@@ -92,16 +92,25 @@ jobs:
                 exit 0
                 ;;
             esac
-            if gh api -X POST "repos/$REPO/pages" -f 'source[branch]=main' -f 'source[path]=/' \
-               && gh api -X PUT "repos/$REPO/pages" -f "cname=$DOMAIN"; then
-              note "Pages site was GONE — recreated it from main:/ on $DOMAIN"
-            else
+            if ! gh api -X POST "repos/$REPO/pages" -f 'source[branch]=main' -f 'source[path]=/'; then
               warn "Pages site is GONE and could not be recreated from here — re-enable it under Settings → Pages (branch main, folder /, custom domain $DOMAIN)"
               # Without a Pages site there is nothing left to repair, and the
               # HTTPS block below would only stack a bogus "certificate still
               # provisioning" note on top of a "Pages site is GONE" one.
               rm -f pages.json
               exit 0
+            fi
+            # The domain is attached separately from the recreate, and reported
+            # separately: `PUT .../pages` 422s while the domain is unverified or
+            # still claimed by another repo — what a repo transfer leaves behind
+            # — and by then the site is already back on the github.io host. One
+            # combined "could not be recreated" would send whoever is on call to
+            # re-enable a site that is now on.
+            if gh api -X PUT "repos/$REPO/pages" -f "cname=$DOMAIN"; then
+              note "Pages site was GONE — recreated it from main:/ on $DOMAIN"
+            else
+              note "Pages site was GONE — recreated it from main:/, on the github.io host for now"
+              warn "Custom domain $DOMAIN could not be attached to the recreated site — set it under Settings → Pages"
             fi
           else
             branch="$(jq -r '.source.branch // ""' pages.json)"
