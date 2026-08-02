@@ -83,6 +83,11 @@ jobs:
               note "Pages site was GONE — recreated it from main:/ on $DOMAIN"
             else
               warn "Pages site is GONE and could not be recreated from here — re-enable it under Settings → Pages (branch main, folder /, custom domain $DOMAIN)"
+              # Without a Pages site there is nothing left to repair, and the
+              # HTTPS block below would only stack a bogus "certificate still
+              # provisioning" note on top of a "Pages site is GONE" one.
+              rm -f pages.json
+              exit 0
             fi
           else
             branch="$(jq -r '.source.branch // ""' pages.json)"
