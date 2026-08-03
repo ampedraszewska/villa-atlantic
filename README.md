@@ -89,31 +89,35 @@ Zmień tekst, zapisz, wgraj zmiany na serwer (patrz: deploy).
 
 ### Co do uzupełnienia przed publikacją
 
-W `index.html` są placeholdery do wymiany:
-
-- `VV-XXXXX` (2 miejsca: sekcja licencji + stopka) → **numer licencji VV**
-- `hello@villaatlantic.com` → **email kontaktowy**
-- `+48 000 000 000` → **numer telefonu** (2 miejsca: w atrybucie `href="https://wa.me/..."` i w wyświetlanym tekście)
-- `YOUR_FORMSPREE_ID` (w `<form action=...>`) → **ID formularza Formspree** (załóż darmowe konto na formspree.io i skopiuj endpoint)
 - Sekrety `CLIFFS_ICAL_URL` i `GARDENS_ICAL_URL` w GitHub Actions → prywatne linki iCal (patrz wyżej)
 
 ---
 
 ## Deploy na GitHub Pages
 
-1. Utwórz nowe publiczne repo GitHub, np. `villa-atlantic-site`.
-2. Wgraj do niego zawartość folderu `villa-atlantic/`.
-3. W repo: Settings → Pages → Source: "Deploy from a branch" → Branch: `main` / root → Save.
-4. Po ~1 minucie strona będzie pod `https://twoj-username.github.io/villa-atlantic-site/`.
-5. Podepnij domenę `villaatlantic.net`:
-   - W repo jest już plik `CNAME` zawierający `villaatlantic.net` (nie usuwaj go)
-   - U rejestratora domeny ustaw rekordy DNS:
-     - A records → `185.199.108.153`, `185.199.109.153`, `185.199.110.153`, `185.199.111.153` (to IP GitHub Pages)
-     - CNAME record `www` → `TWOJ-USERNAME.github.io`
-   - W GitHub: Settings → Pages → Custom domain: `villaatlantic.net` → Save → zaznacz "Enforce HTTPS"
-   - Propagacja DNS trwa 10–60 minut
+Repo: `freezer3/villa-atlantic`. Domena: **`atlanticvilla.net`** (taka jest kolejność słów — nie `villaatlantic.net`).
 
-Każda aktualizacja = commit + push do repo. Strona odświeża się automatycznie w ~1 minutę.
+Każda aktualizacja = commit + push do `main`. Strona odświeża się automatycznie w ~1 minutę. Nie ma kroku budowania.
+
+Konfiguracja, gdyby trzeba było ją kiedyś odtworzyć:
+
+- Settings → Pages → Source: "Deploy from a branch" → Branch: `main` / `/ (root)` → Save
+- Plik `CNAME` w repo zawiera `atlanticvilla.net` — **nie usuwaj go**. To jedyne źródło prawdy o domenie: czyta go i GitHub Pages, i canary (niżej)
+- Settings → Pages → Custom domain: `atlanticvilla.net` → Save → zaznacz "Enforce HTTPS"
+- DNS (Cloudflare):
+  - `A` → `185.199.108.153`, `185.199.109.153`, `185.199.110.153`, `185.199.111.153` (IP GitHub Pages)
+  - `CNAME` `www` → `freezer3.github.io` (musi wskazywać na **obecnego** właściciela repo — po przeniesieniu repo między kontami trzeba go zaktualizować, inaczej `www` zwraca 404)
+- Propagacja DNS trwa 10–60 minut
+
+### Monitoring: canary (`.github/workflows/uptime.yml`)
+
+Co 15 minut pobiera **żywą** stronę i sprawdza, że naprawdę serwuje willę: HTTP 200 + treść naszej strony (nie parkingu domeny ani 404 GitHuba), oba kanały `ical/*.ics` jako prawidłowy `BEGIN:VCALENDAR`, oraz certyfikat TLS ważny jeszcze ponad 14 dni.
+
+Jeśli przyczyną jest konfiguracja Pages w repo (wyłączone Pages, skasowana domena, zmieniona gałąź) — canary **sam ją przywraca** i strona wraca bez udziału człowieka. Run i tak kończy się na czerwono, żeby awaria została w historii Actions.
+
+**Alert = issue na GitHubie** z etykietą `uptime` **plus mail** na `ALERT_EMAIL` — tą samą akcją i tymi samymi sekretami (`MAIL_USERNAME`, `MAIL_PASSWORD`) co alerty synchronizacji kalendarzy, więc awaria strony trafia tam, gdzie już trafiają alerty o kalendarzu. Stan awarii trzyma issue: jedno otwarte issue na całą awarię, kolejne przebiegi nie duplikują ani issue, ani maila, a gdy canary zobaczy zdrową stronę, sam dopisuje komentarz i zamyka issue.
+
+Powód: 2026-08-02 ktoś wyłączył Pages w ustawieniach repo. DNS, TLS, sanitizer i godzinna synchronizacja kalendarzy działały dalej na zielono, a strona przez ten czas zwracała 404 GitHuba — bo nic nigdy nie pobierało żywej strony.
 
 ---
 

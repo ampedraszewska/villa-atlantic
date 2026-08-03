@@ -1,0 +1,257 @@
+name: Uptime canary
+
+# Fetches the LIVE site every 15 minutes and, when the outage is caused by the
+# repo's own GitHub Pages configuration, puts that configuration back without a
+# human. On 2026-08-02 the Pages site was disabled in repo settings: DNS, TLS,
+# the sanitiser, the hourly sync and every workflow stayed green while the site
+# served GitHub's 404 for an unknown number of days, because nothing here ever
+# fetched the live origin.
+#
+# The alert is a GitHub issue plus an email over the same SMTP secrets
+# sync-ical.yml already uses, so an outage lands on the channel the calendar
+# alerts already land on. The issue holds the outage state: one open issue
+# de-duplicates the alert across a long outage, the email is sent only when that
+# issue is first filed, and the issue closes itself once the site is healthy
+# again.
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write # lets GITHUB_TOKEN restore a wiped Pages config unattended
+  issues: write # the alert channel
+
+defaults:
+  run:
+    # Without this the implicit shell is `bash -e {0}` — no pipefail — and every
+    # `check_site.py | tee` below would exit 0 no matter what the canary found.
+    shell: bash
+
+jobs:
+  canary:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      LABEL: uptime
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Ensure the alert label exists
+        # Both the open and the close step filter by this label, and `gh issue
+        # list --label` errors on a label that does not exist yet.
+        run: gh label create "$LABEL" --color B60205 --description "Live-site canary" 2>/dev/null || true
+
+      - name: Check the live site
+        id: check
+        continue-on-error: true # heal + re-check first; a later step fails the run
+        run: python3 scripts/check_site.py | tee report.txt
+
+      - name: Restore the GitHub Pages configuration
+        if: steps.check.outcome == 'failure'
+        # A failure here must not skip the alert steps below — a repair that
+        # itself breaks is exactly when the issue needs to be filed.
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          # heal.txt is what the alert issue reports as repaired, so only
+          # changes that actually landed go there; everything this step could
+          # diagnose but not fix goes to notes.txt.
+          log_to() { echo "$2"; echo "- $2" | tee -a "$1" >> "$GITHUB_STEP_SUMMARY"; }
+          note() { log_to heal.txt "$1"; }
+          warn() { log_to notes.txt "$1"; }
+
+          # CNAME is the single source of truth for the domain — the same file
+          # GitHub Pages itself reads, so the two cannot drift apart. Without it
+          # there is no domain to restore, and `set -e` would otherwise kill the
+          # step here and leave the issue blaming DNS for a missing file.
+          if ! DOMAIN="$(cat CNAME 2>/dev/null)" || [ -z "$DOMAIN" ]; then
+            warn "The CNAME file is missing from the repo — restore it to bring the custom domain back"
+            exit 0
+          fi
+
+          # Every repair notes AFTER the call it describes, and warns when that
+          # call fails: `set -e` would otherwise abort the step with heal.txt
+          # already claiming a repair that never landed.
+          if ! api_err="$(gh api "repos/$REPO/pages" 2>&1 >pages.json)"; then
+            # `gh api` exits non-zero on ANY HTTP error, so a failed read is not by
+            # itself evidence that Pages is off. Only a 404 means there is no site.
+            # On anything else — a 5xx, a rate limit, a token that lost the scope,
+            # i.e. exactly what a GitHub incident looks like from here — the config
+            # is merely unknown, and recreating it would 409 and leave the issue
+            # telling whoever is on call to re-enable a site that was never off.
+            case "$api_err" in
+              *'(HTTP 404)'*) ;; # no Pages site at all — recreate it below
+              *)
+                warn "Could not read the Pages configuration, so it was left untouched: $api_err"
+                rm -f pages.json
+                exit 0
+                ;;
+            esac
+            if ! gh api -X POST "repos/$REPO/pages" -f 'source[branch]=main' -f 'source[path]=/'; then
+              warn "Pages site is GONE and could not be recreated from here — re-enable it under Settings → Pages (branch main, folder /, custom domain $DOMAIN)"
+              # Without a Pages site there is nothing left to repair, and the
+              # HTTPS block below would only stack a bogus "certificate still
+              # provisioning" note on top of a "Pages site is GONE" one.
+              rm -f pages.json
+              exit 0
+            fi
+            # The domain is attached separately from the recreate, and reported
+            # separately: `PUT .../pages` 422s while the domain is unverified or
+            # still claimed by another repo — what a repo transfer leaves behind
+            # — and by then the site is already back on the github.io host. One
+            # combined "could not be recreated" would send whoever is on call to
+            # re-enable a site that is now on.
+            if gh api -X PUT "repos/$REPO/pages" -f "cname=$DOMAIN"; then
+              note "Pages site was GONE — recreated it from main:/ on $DOMAIN"
+            else
+              note "Pages site was GONE — recreated it from main:/, on the github.io host for now"
+              warn "Custom domain $DOMAIN could not be attached to the recreated site — set it under Settings → Pages"
+            fi
+          else
+            branch="$(jq -r '.source.branch // ""' pages.json)"
+            path="$(jq -r '.source.path // ""' pages.json)"
+            cname="$(jq -r '.cname // ""' pages.json)"
+            # build_type flips to "workflow" the moment someone picks "GitHub
+            # Actions" as the source. .source keeps reporting main:/ while
+            # nothing is deployed from it, so branch and path alone would see a
+            # healthy config forever.
+            build="$(jq -r '.build_type // ""' pages.json)"
+            if [ "$branch" != "main" ] || [ "$path" != "/" ] || [ "$build" != "legacy" ]; then
+              if gh api -X PUT "repos/$REPO/pages" \
+                   -f 'build_type=legacy' -f 'source[branch]=main' -f 'source[path]=/'; then
+                note "Pages source was $build $branch:$path — reset to a main:/ branch build"
+              else
+                warn "Pages source is $build $branch:$path and could not be reset from here — set it to branch main, folder / under Settings → Pages"
+              fi
+            fi
+            if [ "$cname" != "$DOMAIN" ]; then
+              if gh api -X PUT "repos/$REPO/pages" -f "cname=$DOMAIN"; then
+                note "Custom domain was '${cname:-<empty>}' — reset to $DOMAIN"
+              else
+                warn "Custom domain is '${cname:-<empty>}' and could not be reset from here — set it to $DOMAIN under Settings → Pages"
+              fi
+            fi
+          fi
+
+          # Best effort: HTTPS cannot be enforced until the certificate for a
+          # freshly (re)attached domain finishes provisioning. The next run
+          # picks it up.
+          if [ "$(gh api "repos/$REPO/pages" --jq '.https_enforced')" != "true" ]; then
+            if gh api -X PUT "repos/$REPO/pages" -F 'https_enforced=true'; then
+              note "Re-enabled Enforce HTTPS"
+            else
+              warn "Could not enforce HTTPS yet (certificate still provisioning)"
+            fi
+          fi
+          rm -f pages.json
+
+      - name: Re-check after the repair
+        id: recheck
+        if: steps.check.outcome == 'failure'
+        continue-on-error: true
+        run: |
+          # A Pages rebuild after a config change takes about a minute. Its own
+          # file: report.txt is what the alert issue is built from, and that has
+          # to stay the list of checks that actually failed.
+          sleep 120
+          python3 scripts/check_site.py | tee recheck.txt
+
+      - name: Open an alert issue
+        id: alert
+        if: steps.check.outcome == 'failure'
+        run: |
+          set -euo pipefail
+          # A failed lookup must not abort the step: `set -e` would leave the
+          # outputs empty and skip the email too, losing both alert channels to
+          # one API hiccup — the same reason the outputs below are written before
+          # `gh issue create`. An unreadable issue list means "not deduplicated",
+          # which costs at most one duplicate issue and email.
+          open="$(gh issue list --label "$LABEL" --state open --limit 1 --json number --jq '.[0].number // ""')" || open=""
+          if [ -n "$open" ]; then
+            echo "#$open is already open for this outage — not filing a duplicate."
+            exit 0
+          fi
+          {
+            cat report.txt
+            echo
+            if [ -s heal.txt ]; then
+              echo "Repaired automatically:"
+              cat heal.txt
+              echo
+            fi
+            if [ -s notes.txt ]; then
+              echo "Found but not repaired from here:"
+              cat notes.txt
+              echo
+            fi
+            if [ ! -s heal.txt ] && [ ! -s notes.txt ]; then
+              echo "The GitHub Pages configuration was already correct, so nothing was"
+              echo "repaired. The cause is whatever the failing check above points at: DNS,"
+              echo "the domain registrar, TLS or a GitHub incident for the page and"
+              echo "certificate checks, a missing or malformed file under ical/ for the"
+              echo "calendar ones. Fixing it needs a human."
+              echo
+            fi
+            if [ "${{ steps.recheck.outcome }}" = "success" ]; then
+              echo "The site is answering correctly again."
+            else
+              echo "The site is STILL down after the repair attempt."
+            fi
+            echo
+            echo "Run: $RUN_URL"
+            echo
+            echo "This issue closes itself once the canary sees the site healthy."
+          } > body.md
+
+          # Set BEFORE the issue is filed: `set -e` would otherwise abort the step
+          # on a GitHub API failure with the outputs still empty, which skips the
+          # email too — both alert channels lost to one API hiccup, during the very
+          # incident that may have taken the site down. The de-duplication above
+          # already ran, so these are still written only on the run that opens the
+          # issue: a long outage sends one email, not one every 15 minutes.
+          echo "subject=$(head -1 report.txt)" >> "$GITHUB_OUTPUT"
+          { echo 'body<<EOF_BODY'; cat body.md; echo 'EOF_BODY'; } >> "$GITHUB_OUTPUT"
+
+          gh issue create --title "$(head -1 report.txt)" --label "$LABEL" --body-file body.md
+
+      - name: Email the alert
+        # Same action, secrets and recipient as the sync-ical.yml alerts, so an
+        # outage arrives where the calendar alerts already arrive. always() so a
+        # step above that failed after setting these outputs — `gh issue create`
+        # hitting the API — still gets the outage emailed.
+        if: always() && steps.alert.outputs.subject != ''
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: '⚠️ Villa Atlantic: ${{ steps.alert.outputs.subject }}'
+          to: ${{ vars.ALERT_EMAIL }}
+          from: Villa Atlantic Canary <${{ secrets.MAIL_USERNAME }}>
+          body: ${{ steps.alert.outputs.body }}
+
+      - name: Close the alert issue once the site is healthy
+        if: steps.check.outcome == 'success'
+        run: |
+          set -euo pipefail
+          for n in $(gh issue list --label "$LABEL" --state open --json number --jq '.[].number'); do
+            gh issue comment "$n" --body "The site is healthy again — all checks passed in $RUN_URL"
+            gh issue close "$n"
+          done
+
+      - name: Fail the run so the outage stays in the Actions history
+        if: steps.check.outcome == 'failure'
+        run: |
+          if [ "${{ steps.recheck.outcome }}" = "success" ]; then
+            echo "::error::Site was DOWN and is healthy again after the automatic repair."
+          else
+            echo "::error::Site is DOWN and still failing after the automatic repair."
+          fi
+          exit 1
