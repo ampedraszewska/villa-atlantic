@@ -147,6 +147,10 @@
         --sand: #d9c7a5;
         --coral: #e8664d;
         --coral-dark: #c8472e;
+        /* Calendar availability states. Single source of truth: both the day
+           cell and its legend swatch read these, so they can never drift. */
+        --cal-booked: #f0b2a4;
+        --cal-partial: #bcdfe6;
         --max: 1180px;
         --radius: 12px;
       }
@@ -1121,10 +1125,16 @@
         border-color: var(--ocean-light);
       }
       .fc .fc-daygrid-day.booked-full {
-        background: rgba(232, 102, 77, 0.12);
+        background: var(--cal-booked);
       }
       .fc .fc-daygrid-day.booked-partial {
-        background: rgba(217, 199, 165, 0.3);
+        background: var(--cal-partial);
+      }
+      /* Background events only carry the booking ranges into JS; the day cell
+         paints itself from the classes above. Rendering them too would stack
+         translucent layers and produce a different shade per overlap count. */
+      .fc .fc-bg-event {
+        display: none;
       }
       .fc-event-title {
         font-weight: 600;
@@ -1147,6 +1157,16 @@
         height: 14px;
         border-radius: 4px;
         display: inline-block;
+        border: 1px solid var(--border);
+      }
+      .legend-dot.is-booked {
+        background: var(--cal-booked);
+      }
+      .legend-dot.is-partial {
+        background: var(--cal-partial);
+      }
+      .legend-dot.is-free {
+        background: white;
       }
 
       /* REVIEWS */
@@ -2977,29 +2997,18 @@
 
         <div class="cal-legend">
           <span
-            ><span
-              class="legend-dot"
-              style="background: rgba(232, 102, 77, 0.3); border: 1px solid rgba(232, 102, 77, 0.6)"
-            ></span
-            ><span data-lang="en">Fully booked</span><span data-lang="pl">Zajęte</span
-            ><span data-lang="es">Completo</span></span
+            ><span class="legend-dot is-booked"></span><span data-lang="en">Fully booked</span
+            ><span data-lang="pl">Zajęte</span><span data-lang="es">Completo</span></span
           >
           <span
-            ><span
-              class="legend-dot"
-              style="background: rgba(217, 199, 165, 0.5); border: 1px solid var(--sand)"
-            ></span
+            ><span class="legend-dot is-partial"></span
             ><span data-lang="en">Partially booked (one apartment free)</span
             ><span data-lang="pl">Częściowo zajęte (jeden apartament wolny)</span
             ><span data-lang="es">Parcialmente reservado (un apartamento libre)</span></span
           >
           <span
-            ><span
-              class="legend-dot"
-              style="background: white; border: 1px solid var(--border)"
-            ></span
-            ><span data-lang="en">Available</span><span data-lang="pl">Wolne</span
-            ><span data-lang="es">Disponible</span></span
+            ><span class="legend-dot is-free"></span><span data-lang="en">Available</span
+            ><span data-lang="pl">Wolne</span><span data-lang="es">Disponible</span></span
           >
         </div>
       </div>
@@ -3331,7 +3340,6 @@
           ogDescription:
             'Oceanfront villa with pool and garden. Two independent apartments (5+6 guests) or rent the whole villa (up to 11). Official VV license.',
           subject: 'Villa Atlantic — new inquiry',
-          booked: 'Booked',
           lb: {
             close: 'Close',
             zoom: 'Zoom',
@@ -3348,7 +3356,6 @@
           ogDescription:
             'Nadmorska willa z basenem i ogrodem. Dwa niezależne apartamenty (5+6 osób) lub cała willa (do 11 osób). Oficjalna licencja VV.',
           subject: 'Villa Atlantic — nowe zapytanie',
-          booked: 'Zajęte',
           lb: {
             close: 'Zamknij',
             zoom: 'Powiększ',
@@ -3365,7 +3372,6 @@
           ogDescription:
             'Villa frente al mar con piscina y jardín. Dos apartamentos independientes (5+6 huéspedes) o la villa entera (hasta 11). Licencia VV oficial.',
           subject: 'Villa Atlantic — nueva consulta',
-          booked: 'Reservado',
           lb: {
             close: 'Cerrar',
             zoom: 'Ampliar',
@@ -3418,13 +3424,13 @@
         document.querySelectorAll('[data-alt-' + l + ']').forEach((img) => {
           img.setAttribute('alt', img.getAttribute('data-alt-' + l));
         });
-        // Re-localize the calendar if it has already been built.
+        // Re-localize the calendar if it has already been built. Only the locale
+        // is language-dependent (month title, weekday headers, buttons) — the
+        // event sources carry no rendered text, so they are left alone.
         if (calendar) {
           calendar.setOption('locale', l);
-          calendar.getEventSources().forEach((s) => s.remove());
-          buildSources(currentView).forEach((s) => calendar.addEventSource(s));
           calendar.render();
-          refreshAllPrices();
+          refreshCalendarCells();
         }
       }
 
@@ -3564,34 +3570,46 @@
         return d.toISOString().slice(0, 10);
       }
 
-      function getBookedDateSet() {
-        // Returns a Set of 'YYYY-MM-DD' strings for every day that overlaps any
-        // background event in the currently rendered view. FullCalendar renders
-        // multi-day background events as a single DOM element in the first cell
-        // of each row segment (with oversized negative right offset), so we can't
-        // find "covered" cells via DOM — we walk event date ranges instead.
-        const dates = new Set();
-        if (!calendar) return dates;
+      function getOccupancy() {
+        // Maps 'YYYY-MM-DD' -> Set of apartment source ids booked that day, for
+        // every background event in the currently rendered view. FullCalendar
+        // renders multi-day background events as a single DOM element in the
+        // first cell of each row segment (with oversized negative right offset),
+        // so we can't find "covered" cells via DOM — we walk event ranges instead.
+        const occupancy = new Map();
+        if (!calendar) return occupancy;
         calendar.getEvents().forEach((e) => {
           const start = dateKeyFromEventBoundary(e.startStr);
           if (!start) return;
+          const sourceId = (e.source && e.source.id) || 'unknown';
           let cursor = start;
           let end = e.endStr ? dateKeyFromEventBoundary(e.endStr) : addDaysToDateKey(start, 1);
           if (!end || end <= start) end = addDaysToDateKey(start, 1);
           while (cursor < end) {
-            dates.add(cursor);
+            if (!occupancy.has(cursor)) occupancy.set(cursor, new Set());
+            occupancy.get(cursor).add(sourceId);
             cursor = addDaysToDateKey(cursor, 1);
           }
         });
-        return dates;
+        return occupancy;
       }
 
-      function refreshAllPrices() {
-        const booked = getBookedDateSet();
+      function refreshCalendarCells() {
+        // One pass sets both the availability colour and the price overlay.
+        // "Full" means every apartment feed in the current view covers the day —
+        // 2 in the whole-villa view, 1 in a single-apartment tab (where partial
+        // can't happen). Both classes are toggled on every cell so stale state
+        // never survives a month nav or a tab switch.
+        const occupancy = getOccupancy();
+        const total = calendar ? calendar.getEventSources().length : 0;
         document.querySelectorAll('#calendar .fc-daygrid-day[data-date]').forEach((cell) => {
           const dateStr = cell.getAttribute('data-date');
           if (!dateStr) return;
-          if (booked.has(dateStr)) {
+          const booked = occupancy.has(dateStr) ? occupancy.get(dateStr).size : 0;
+          cell.classList.toggle('booked-full', booked > 0 && booked >= total);
+          cell.classList.toggle('booked-partial', booked > 0 && booked < total);
+          if (booked > 0) {
+            // Nothing bookable at this view's rate — drop the price.
             const old = cell.querySelector('.price-overlay');
             if (old) old.remove();
             return;
@@ -3623,21 +3641,6 @@
           eventSources: buildSources(currentView),
           dayCellDidMount: function (info) {
             renderPriceOnCell(info.el, info.date);
-          },
-          eventDidMount: function (info) {
-            info.el.style.backgroundColor = 'rgba(232,102,77,0.75)';
-            info.el.style.borderColor = 'rgba(232,102,77,0.9)';
-            // The iCal feed bakes an English SUMMARY ("Booked") into every
-            // event title, and source-level eventContent is ignored by
-            // FullCalendar v6. Localize the rendered title here (calendar-level
-            // hook) instead, so it follows the page language. setLang rebuilds
-            // the sources on switch, re-firing this for live re-localization.
-            const titleEl = info.el.querySelector('.fc-event-title');
-            if (titleEl) {
-              titleEl.textContent = (
-                I18N_META[document.documentElement.lang] || I18N_META.en
-              ).booked;
-            }
           },
           dateClick: function (info) {
             trackAnalytics('calendar_date_click', {
@@ -3673,12 +3676,15 @@
               });
             }
             calPrevStart = month;
+            // Day cells are re-mounted on every nav; repaint them (idempotent —
+            // eventsSet repeats this once the new month's events land).
+            refreshCalendarCells();
           },
           // Fires whenever the event set changes (async iCal loads, month change,
           // tab switch). We need to strip the price overlay from newly-booked cells
           // and restore it on cells that were booked before but no longer are.
           eventsSet: function () {
-            refreshAllPrices();
+            refreshCalendarCells();
           },
         });
         calendar.render();
@@ -3700,41 +3706,24 @@
         );
       }
 
+      // One source per apartment feed shown in the view. Every source carries an
+      // id: refreshCalendarCells counts distinct ids per day to tell a fully
+      // booked day from a partially booked one, and the source count is the
+      // "fully booked" threshold. Sources are never rendered (.fc-bg-event is
+      // hidden), so they need no colour.
       function buildSources(view) {
         const hasCliffs = ICAL_CLIFFS && ICAL_CLIFFS !== 'CLIFFS_ICAL_URL';
         const hasGardens = ICAL_GARDENS && ICAL_GARDENS !== 'GARDENS_ICAL_URL';
+        const cliffs = { url: ICAL_CLIFFS, format: 'ics', display: 'background', id: 'cliffs' };
+        const gardens = { url: ICAL_GARDENS, format: 'ics', display: 'background', id: 'gardens' };
         const sources = [];
         if (view === 'cliffs' && hasCliffs) {
-          sources.push({
-            url: ICAL_CLIFFS,
-            format: 'ics',
-            color: '#e8664d',
-            display: 'background',
-          });
+          sources.push(cliffs);
         } else if (view === 'gardens' && hasGardens) {
-          sources.push({
-            url: ICAL_GARDENS,
-            format: 'ics',
-            color: '#e8664d',
-            display: 'background',
-          });
+          sources.push(gardens);
         } else if (view === 'whole') {
-          if (hasCliffs)
-            sources.push({
-              url: ICAL_CLIFFS,
-              format: 'ics',
-              color: 'rgba(217,199,165,0.5)',
-              display: 'background',
-              id: 'cliffs',
-            });
-          if (hasGardens)
-            sources.push({
-              url: ICAL_GARDENS,
-              format: 'ics',
-              color: 'rgba(217,199,165,0.5)',
-              display: 'background',
-              id: 'gardens',
-            });
+          if (hasCliffs) sources.push(cliffs);
+          if (hasGardens) sources.push(gardens);
         }
         return sources;
       }
@@ -3750,7 +3739,7 @@
           calendar.getEventSources().forEach((s) => s.remove());
           buildSources(v).forEach((s) => calendar.addEventSource(s));
           calendar.render();
-          refreshAllPrices();
+          refreshCalendarCells();
         });
       });
 
