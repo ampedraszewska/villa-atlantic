@@ -310,3 +310,28 @@ def test_supported_langs_include_es(html_text: str):
     for body in decls:
         for lang in ("en", "pl", "es"):
             assert f"'{lang}'" in body, f"SUPPORTED is missing '{lang}': [{body}]"
+
+
+def test_calendar_legend_swatches_share_css_vars_with_day_cells(
+    soup: BeautifulSoup, html_text: str
+):
+    """The legend must be painted by the same CSS custom properties as the
+    calendar day cells. Hardcoding a colour on the swatch (the old inline
+    `style="background: rgba(...)"`) let the legend drift until it matched
+    nothing on the calendar."""
+    dots = soup.select(".cal-legend .legend-dot")
+    assert len(dots) == 3, f"expected 3 legend swatches, got {len(dots)}"
+    modifiers = {"is-booked", "is-partial", "is-free"}
+    assert {c for d in dots for c in d.get("class", [])} == {"legend-dot"} | modifiers
+    for dot in dots:
+        assert "background" not in (dot.get("style") or ""), (
+            "legend swatch hardcodes a colour inline instead of reading the "
+            "--cal-* custom property the day cell uses"
+        )
+    # Both consumers of each var must exist: the day-cell rule and the swatch rule.
+    for var, cell_class, modifier in (
+        ("--cal-booked", "booked-full", "is-booked"),
+        ("--cal-partial", "booked-partial", "is-partial"),
+    ):
+        assert re.search(rf"\.{cell_class}\s*{{\s*background:\s*var\({var}\)", html_text)
+        assert re.search(rf"\.legend-dot\.{modifier}\s*{{\s*background:\s*var\({var}\)", html_text)
