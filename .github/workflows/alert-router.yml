@@ -1,0 +1,150 @@
+name: Workflow failure alerts
+
+# Out-of-band alerting for the workflows nobody is watching.
+#
+# uptime.yml and sync-ical.yml raise their alerts from a step *inside* the job
+# they monitor, so a job that dies before reaching that step alerts nobody: a
+# runner that is never handed out, a failing checkout, a timeout-minutes kill.
+# On 2026-08-06 an Actions outage killed the 16:50Z canary run before a single
+# step executed and nothing said a word. pages-build-deployment — the workflow
+# that actually publishes the site, and which also failed that day — has no file
+# in this repo and has never had any alerting at all.
+#
+# This runs as a separate workflow_run job, so it survives all of that.
+#
+# Notifications are email-only. The alert is a GitHub issue assigned to the repo
+# owner, and the assignment is what generates the mail: it arrives under
+# "Participating", which is a different notification category from the per-run
+# Actions email that was switched off account-wide on 2026-08-06.
+#
+# The repository is public, so the issue body deliberately carries no run URL and
+# no step names — workflow name only. The detail lives in the Actions tab.
+
+on:
+  workflow_run:
+    types: [completed]
+    workflows:
+      - Uptime canary
+      - Sync iCal feeds
+      # GitHub reports two spellings for the generated Pages workflow: the
+      # workflows API calls it pages-build-deployment, a run object calls it
+      # "pages build and deployment". A name that matches nothing is ignored, a
+      # missing one is a silent hole — which is the exact bug this file exists
+      # to close. So both.
+      - pages-build-deployment
+      - pages build and deployment
+      # Deliberately not CI and not Lint: a PR failure is already visible in the
+      # PR, and nothing there runs unattended.
+
+concurrency:
+  # The alert issue is shared mutable state; serialise open-vs-close per
+  # monitored workflow.
+  group: alert-router-${{ github.event.workflow_run.name }}
+  cancel-in-progress: false
+
+permissions:
+  issues: write # the alert channel
+  actions: read # read the monitored run's jobs
+
+jobs:
+  route:
+    # Evaluated before a runner is claimed, so pruning here is free. Only main
+    # matters — a failure on a PR belongs in that PR. The branch is spelled out
+    # rather than read from the payload: an expression that silently evaluated to
+    # empty would disable the whole router, which is the one thing it must never
+    # do. Everything that is not a terminal verdict on our own code is dropped
+    # here too, so only a run worth acting on gets a runner. A timeout is on the
+    # list because it is a real failure that left executed steps behind; a manual
+    # or concurrency cancel is not.
+    if: >-
+      github.event.workflow_run.head_branch == 'main' &&
+      contains(fromJSON('["success","failure","timed_out"]'), github.event.workflow_run.conclusion)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Route the monitored run to an alert
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          OWNER: ${{ github.repository_owner }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          # Passed via env, never inlined into the script: a workflow name is
+          # data, and data does not belong in the body of a shell script.
+          WF_NAME: ${{ github.event.workflow_run.name }}
+          WF_PATH: ${{ github.event.workflow_run.path }}
+        run: |
+          set -euo pipefail
+
+          # The dedup key is the monitored workflow's own filename, which makes
+          # it byte-identical to the "uptime" label uptime.yml already files
+          # under. That is what stops this router opening a second issue next to
+          # an in-job alert, and what lets uptime.yml's own close-on-green step
+          # close a router-opened one. No name -> key mapping table needed.
+          key="$(basename "$WF_PATH" .yml)"
+
+          # A failed lookup must not abort the step. `set -e` would leave the
+          # alert unsent over one API hiccup, during the very incident that may
+          # have taken the site down. An unreadable issue list means "not
+          # deduplicated", which costs at most one duplicate issue. It also
+          # covers the first run for a key whose label does not exist yet.
+          open_num="$(gh issue list --label "$key" --state open --limit 1 --json number --jq '.[0].number // empty')" || open_num=""
+
+          if [ "$CONCLUSION" = "success" ]; then
+            if [ -z "$open_num" ]; then
+              echo "Nothing open for $key — nothing to resolve."
+              exit 0
+            fi
+            gh issue comment "$open_num" --body "Recovered — green again as of $(date -u '+%Y-%m-%d %H:%M UTC')."
+            gh issue close "$open_num"
+            echo "Closed #$open_num ($key)."
+            exit 0
+          fi
+
+          # Zero executed steps across every job means GitHub never handed the
+          # job a runner ("The job was not acquired by Runner of type hosted even
+          # after multiple attempts" — an Actions incident or a capacity blip).
+          # Nothing of ours ran, so there is nothing to alert about, and mailing
+          # on it is what trains you to ignore the mail. The gate is the step
+          # count and never the conclusion string: a timeout-minutes kill does
+          # leave executed steps behind, so a real hang is not swallowed here.
+          # An unreadable jobs list falls through to alerting rather than to
+          # silence — this router failing open is the whole point of it.
+          steps_run="$(gh api "repos/$GH_REPO/actions/runs/$RUN_ID/jobs?per_page=100" --jq '[.jobs[].steps[]] | length')" || steps_run=unknown
+          if [ "$steps_run" = "0" ]; then
+            echo "::notice::$WF_NAME failed without executing a step — infrastructure, not us. Not alerting."
+            {
+              echo "### Suppressed: infrastructure failure"
+              echo
+              echo "$WF_NAME failed without executing a single step, so GitHub never"
+              echo "handed the job a runner. No alert raised."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          # The monitored workflow may have raised this alert itself, with a far
+          # richer body than the generic one below, or this router may have
+          # raised it on an earlier run of the same outage. Either way, leave it
+          # alone: one open issue per outage means one email per outage, not one
+          # every 15 minutes for as long as it lasts.
+          if [ -n "$open_num" ]; then
+            echo "::notice::$key already open as #$open_num — not filing a duplicate."
+            exit 0
+          fi
+
+          # Idempotent: the label is the dedup handle, so it has to exist before
+          # it can be filtered on. "uptime" already exists; the others do not yet.
+          gh label create "$key" --color B60205 --description "Automated workflow failure alert" 2>/dev/null || true
+
+          gh issue create \
+            --title "$WF_NAME workflow failing" \
+            --label "$key" \
+            --assignee "$OWNER" \
+            --body "$WF_NAME failed on main and did not raise its own alert.
+
+          This repository is public, so this body carries no run URL and no step
+          names. The detail is in the Actions tab, on the most recent run of that
+          workflow.
+
+          This issue closes itself on the next green run."
+          echo "Opened an alert for $key, assigned to $OWNER."
