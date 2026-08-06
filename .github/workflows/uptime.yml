@@ -38,6 +38,7 @@ jobs:
       REPO: ${{ github.repository }}
       RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
       LABEL: uptime
+      OWNER: ${{ github.repository_owner }}
     steps:
       - uses: actions/checkout@v4
 
@@ -217,7 +218,13 @@ jobs:
           echo "subject=$(head -1 report.txt)" >> "$GITHUB_OUTPUT"
           { echo 'body<<EOF_BODY'; cat body.md; echo 'EOF_BODY'; } >> "$GITHUB_OUTPUT"
 
-          gh issue create --title "$(head -1 report.txt)" --label "$LABEL" --body-file body.md
+          # Assigned, not just filed: assignment is what guarantees the email.
+          # It arrives under "Participating", which is a different notification
+          # category from the per-run Actions email that is switched off
+          # account-wide — so an unassigned issue would notify only as long as
+          # the watch settings happen to cooperate. alert-router.yml assigns the
+          # issues it opens for the same reason.
+          gh issue create --title "$(head -1 report.txt)" --label "$LABEL" --body-file body.md --assignee "$OWNER"
 
       - name: Email the alert
         # Same action, secrets and recipient as the sync-ical.yml alerts, so an
